@@ -1,9 +1,17 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
-import path from "path";
 import { getSessionFromCookies } from "@/lib/auth";
+import {
+  uploadEpaper,
+  getEpaperUrl,
+  deleteEpaper,
+} from "@/lib/news";
 
 const MAX_PDF_BYTES = 25 * 1024 * 1024;
+
+export async function GET() {
+  const url = await getEpaperUrl();
+  return NextResponse.json({ url });
+}
 
 export async function POST(request: NextRequest) {
   const session = await getSessionFromCookies();
@@ -29,12 +37,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
-    const dest = path.join(process.cwd(), "public", "epaper.pdf");
-    await fs.writeFile(dest, buffer);
+    const url = await uploadEpaper(file);
 
-    return NextResponse.json({ success: true, message: "E-Paper updated successfully" });
+    return NextResponse.json({
+      success: true,
+      message: "E-Paper updated successfully",
+      url,
+    });
   } catch {
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+  }
+}
+
+export async function DELETE() {
+  const session = await getSessionFromCookies();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    await deleteEpaper();
+    return NextResponse.json({ success: true, message: "E-Paper deleted" });
+  } catch {
+    return NextResponse.json({ error: "Delete failed" }, { status: 500 });
   }
 }

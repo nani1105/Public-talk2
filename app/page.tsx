@@ -1,4 +1,4 @@
-import { readNews } from "@/lib/news";
+import { readNews, getEpaperUrl } from "@/lib/news";
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
@@ -16,7 +16,7 @@ function snippet(text: string, max = 140) {
 }
 
 export default async function HomePage() {
-  const articles = await readNews();
+  const [articles, epaperUrl] = await Promise.all([readNews(), getEpaperUrl()]);
 
   return (
     <div className="min-h-screen">
@@ -43,20 +43,30 @@ export default async function HomePage() {
         <section className="lg:col-span-2">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-serif text-2xl font-bold">Today&apos;s E-Paper</h2>
-            <a
-              href="/epaper.pdf"
-              download
-              className="rounded border border-stone-900 px-4 py-2 text-sm font-medium transition hover:bg-stone-900 hover:text-white"
-            >
-              Download PDF
-            </a>
+            {epaperUrl && (
+              <a
+                href={epaperUrl}
+                download="epaper.pdf"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded border border-stone-900 px-4 py-2 text-sm font-medium transition hover:bg-stone-900 hover:text-white"
+              >
+                Download PDF
+              </a>
+            )}
           </div>
           <div className="overflow-hidden rounded-lg border border-stone-300 bg-white shadow-sm">
-            <iframe
-              src="/epaper.pdf"
-              title="Daily E-Paper"
-              className="h-[80vh] w-full"
-            />
+            {epaperUrl ? (
+              <iframe
+                src={epaperUrl}
+                title="Daily E-Paper"
+                className="h-[80vh] w-full"
+              />
+            ) : (
+              <div className="flex h-[40vh] items-center justify-center text-stone-500">
+                No e-paper uploaded yet.
+              </div>
+            )}
           </div>
         </section>
 

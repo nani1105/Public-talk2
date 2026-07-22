@@ -1,46 +1,56 @@
 # Public Talk — News Agency
 
-A self-contained Next.js news agency site with an e-paper viewer and JWT-protected admin publishing portal. No external database — articles are stored in `data/news.json`.
+Next.js news site with e-paper viewer and JWT-protected admin portal.
 
-## Quick start
+## Local development
 
 ```bash
 npm install
-cp .env.local.example .env.local   # then edit credentials
+cp .env.local.example .env.local
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+## Vercel deployment (required setup)
+
+Vercel uses a **read-only filesystem**, so uploads must use **Vercel Blob**:
+
+1. Open your Vercel project → **Storage** → **Create Database / Store** → **Blob**
+2. Connect the Blob store to your project (adds `BLOB_READ_WRITE_TOKEN` automatically)
+3. In **Settings → Environment Variables**, add:
+   - `ADMIN_USERNAME`
+   - `ADMIN_PASSWORD`
+   - `JWT_SECRET` (32+ random characters)
+4. Redeploy
+
+Without Blob storage, file uploads and the e-paper will not persist and `/epaper.pdf` will 404.
 
 ## Environment variables
-
-Create `.env.local`:
 
 ```env
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=your-secure-password
 JWT_SECRET=your-long-random-secret-at-least-32-chars
+BLOB_READ_WRITE_TOKEN=   # auto-set by Vercel when Blob is linked
 ```
 
 ## Routes
 
 | Route | Description |
 |-------|-------------|
-| `/` | Public homepage — e-paper reader + news feed |
+| `/` | Public homepage — e-paper + news feed |
 | `/login` | Admin login |
-| `/admin` | Protected dashboard (PDF upload + news publishing) |
+| `/admin` | Dashboard — upload/update/delete e-paper & articles |
 
-## Data storage
+## Admin features
 
-- **Articles:** `data/news.json`
-- **Cover images:** `public/uploads/`
-- **E-paper:** `public/epaper.pdf` (overwritten on each upload)
+- Upload, replace, or **delete** the daily e-paper PDF
+- Publish, **edit**, or **delete** news articles
+- Cover images stored in Vercel Blob (production) or `public/uploads/` (local)
 
-## Default admin login
+## Storage
 
-Use the credentials from `.env.local` (default username: `admin`).
-
-## Production notes
-
-This app writes to the local filesystem. Deploy on a persistent host (VPS, Docker, Railway with a volume) — not on ephemeral serverless platforms like Vercel without external storage.
-"# Public-Talk" 
+| Data | Local dev | Vercel |
+|------|-----------|--------|
+| Articles | `data/news.json` | Blob `news-data.json` |
+| E-paper | `public/epaper.pdf` | Blob `epaper.pdf` |
+| Images | `public/uploads/` | Blob `uploads/*` |

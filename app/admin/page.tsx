@@ -1,17 +1,44 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { NEWS_CATEGORIES } from "@/lib/types";
+import { NEWS_CATEGORIES, type NewsArticle } from "@/lib/types";
 
 type Message = { type: "ok" | "err"; text: string } | null;
 
+const emptyForm = {
+  title: "",
+  category: "Local" as NewsArticle["category"],
+  body: "",
+};
+
 export default function AdminPage() {
   const router = useRouter();
+  const [articles, setArticles] = useState<NewsArticle[]>([]);
+  const [epaperUrl, setEpaperUrl] = useState<string | null>(null);
   const [epaperMsg, setEpaperMsg] = useState<Message>(null);
   const [newsMsg, setNewsMsg] = useState<Message>(null);
   const [epaperLoading, setEpaperLoading] = useState(false);
   const [newsLoading, setNewsLoading] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [form, setForm] = useState(emptyForm);
+  const [coverFile, setCoverFile] = useState<File | null>(null);
+
+  const loadData = useCallback(async () => {
+    const [newsRes, epaperRes] = await Promise.all([
+      fetch("/api/admin/news"),
+      fetch("/api/admin/epaper"),
+    ]);
+    if (newsRes.ok) setArticles(await newsRes.json());
+    if (epaperRes.ok) {
+      const data = await epaperRes.json();
+      setEpaperUrl(data.url ?? null);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   async function handleLogout() {
     await fetch("/api/auth/logout", { method: "POST" });
@@ -19,13 +46,45 @@ export default function AdminPage() {
     router.refresh();
   }
 
+  function resetForm() {
+    setEditingId(null);
+    setForm(emptyForm);
+    setCoverFile(null);
+  }
+
+  function startEdit(article: NewsArticle) {
+    setEditingId(article.id);
+    setForm({
+      title: article.title,
+      category: article.category,
+      body: article.body,
+    });
+    setCoverFile(null);
+    setNewsMsg(null);
+    window.scrollTo({ top: document.body.scrollHeight, behavior: "smooth" });
+  }
+
+  async function handleDeleteArticle(id: string) {
+    if (!confirm("Delete this article permanently?")) return;
+
+    const res = await fetch(`/api/admin/news/${id}`, { method: "DELETE" });
+    const data = await res.json();
+    if (!res.ok) {
+      setNewsMsg({ type: "err", text: data.error ?? "Delete failed" });
+      return;
+    }
+    setNewsMsg({ type: "ok", text: "Article deleted" });
+    if (editingId === id) resetForm();
+    await loadData();
+  }
+
   async function handleEpaper(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setEpaperMsg(null);
     setEpaperLoading(true);
 
-    const form = e.currentTarget;
-    const fd = new FormData(form);
+    const formEl = e.currentTarget;
+    const fd = new FormData(formEl);
 
     try {
       const res = await fetch("/api/admin/epaper", { method: "POST", body: fd });
@@ -35,7 +94,29 @@ export default function AdminPage() {
         return;
       }
       setEpaperMsg({ type: "ok", text: data.message ?? "E-Paper uploaded" });
-      form.reset();
+      setEpaperUrl(data.url ?? null);
+      formEl.reset();
+    } catch {
+      setEpaperMsg({ type: "err", text: "Network error" });
+    } finally {
+      setEpaperLoading(false);
+    }
+  }
+
+  async function handleDeleteEpaper() {
+    if (!confirm("Delete the current e-paper edition?")) return;
+
+    setEpaperMsg(null);
+    setEpaperLoading(true);
+    try {
+      const res = await fetch("/api/admin/epaper", { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) {
+        setEpaperMsg({ type: "err", text: data.error ?? "Delete failed" });
+        return;
+      }
+      setEpaperMsg({ type: "ok", text: data.message ?? "E-Paper deleted" });
+      setEpaperUrl(null);
     } catch {
       setEpaperMsg({ type: "err", text: "Network error" });
     } finally {
@@ -48,18 +129,35 @@ export default function AdminPage() {
     setNewsMsg(null);
     setNewsLoading(true);
 
-    const form = e.currentTarget;
-    const fd = new FormData(form);
+    const fd = new FormData();
+    fd.set("title", form.title);
+    fd.set("category", form.category);
+    fd.set("body", form.body);
+    if (coverFile) fd.set("coverImage", coverFile);
+
+    const isEdit = Boolean(editingId);
+    if (!isEdit && !coverFile) {
+      setNewsMsg({ type: "err", text: "Cover image is required for new articles" });
+      setNewsLoading(false);
+      return;
+    }
 
     try {
-      const res = await fetch("/api/admin/news", { method: "POST", body: fd });
+      const res = await fetch(
+        isEdit ? `/api/admin/news/${editingId}` : "/api/admin/news",
+        { method: isEdit ? "PUT" : "POST", body: fd }
+      );
       const data = await res.json();
       if (!res.ok) {
-        setNewsMsg({ type: "err", text: data.error ?? "Publish failed" });
+        setNewsMsg({ type: "err", text: data.error ?? "Save failed" });
         return;
       }
-      setNewsMsg({ type: "ok", text: "Article published successfully" });
-      form.reset();
+      setNewsMsg({
+        type: "ok",
+        text: isEdit ? "Article updated successfully" : "Article published successfully",
+      });
+      resetForm();
+      await loadData();
     } catch {
       setNewsMsg({ type: "err", text: "Network error" });
     } finally {
@@ -88,7 +186,7 @@ export default function AdminPage() {
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5">
           <div>
             <h1 className="font-serif text-2xl font-black">Publishing Portal</h1>
-            <p className="text-sm text-stone-500"> Public Talk Admin</p>
+            <p className="text-sm text-stone-500">Public Talk Admin</p>
           </div>
           <button
             type="button"
@@ -100,12 +198,28 @@ export default function AdminPage() {
         </div>
       </header>
 
-      <main className="mx-auto grid max-w-5xl gap-8 px-4 py-8 md:grid-cols-2">
+      <main className="mx-auto max-w-5xl space-y-8 px-4 py-8">
         <section className="rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
           <h2 className="font-serif text-xl font-bold">Daily E-Paper</h2>
           <p className="mt-1 text-sm text-stone-500">
-            Upload replaces today&apos;s edition instantly.
+            Upload replaces today&apos;s edition. Delete removes the current PDF.
           </p>
+
+          {epaperUrl ? (
+            <p className="mt-3 text-sm text-green-700">
+              Current edition is live.{" "}
+              <a
+                href={epaperUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="underline"
+              >
+                View PDF
+              </a>
+            </p>
+          ) : (
+            <p className="mt-3 text-sm text-stone-500">No e-paper uploaded yet.</p>
+          )}
 
           <form onSubmit={handleEpaper} className="mt-4">
             <input
@@ -115,25 +229,98 @@ export default function AdminPage() {
               required
               className="block w-full text-sm"
             />
-            <button
-              type="submit"
-              disabled={epaperLoading}
-              className="mt-4 w-full rounded bg-stone-900 py-2 text-sm font-semibold text-white disabled:opacity-60"
-            >
-              {epaperLoading ? "Uploading…" : "Upload E-Paper"}
-            </button>
+            <div className="mt-4 flex gap-3">
+              <button
+                type="submit"
+                disabled={epaperLoading}
+                className="flex-1 rounded bg-stone-900 py-2 text-sm font-semibold text-white disabled:opacity-60"
+              >
+                {epaperLoading ? "Working…" : epaperUrl ? "Replace E-Paper" : "Upload E-Paper"}
+              </button>
+              {epaperUrl && (
+                <button
+                  type="button"
+                  onClick={handleDeleteEpaper}
+                  disabled={epaperLoading}
+                  className="rounded border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                >
+                  Delete
+                </button>
+              )}
+            </div>
           </form>
           {alert(epaperMsg)}
         </section>
 
-        <section className="rounded-xl border border-stone-200 bg-white p-6 shadow-sm md:col-span-2">
-          <h2 className="font-serif text-xl font-bold">Publish News Article</h2>
+        <section className="rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
+          <h2 className="font-serif text-xl font-bold">Published Articles</h2>
+          <p className="mt-1 text-sm text-stone-500">
+            {articles.length} article{articles.length !== 1 ? "s" : ""} total
+          </p>
+
+          {articles.length === 0 ? (
+            <p className="mt-4 text-sm text-stone-500">No articles yet.</p>
+          ) : (
+            <ul className="mt-4 divide-y divide-stone-100">
+              {articles.map((article) => (
+                <li key={article.id} className="flex gap-4 py-4">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={article.coverImage}
+                    alt=""
+                    className="h-16 w-16 shrink-0 rounded object-cover"
+                  />
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium leading-snug">{article.title}</p>
+                    <p className="text-xs text-stone-500">
+                      {article.category} ·{" "}
+                      {new Date(article.publishedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => startEdit(article)}
+                      className="rounded border border-stone-300 px-3 py-1 text-xs font-medium hover:bg-stone-50"
+                    >
+                      Edit
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteArticle(article.id)}
+                      className="rounded border border-red-200 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+
+        <section className="rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
+          <div className="flex items-center justify-between">
+            <h2 className="font-serif text-xl font-bold">
+              {editingId ? "Edit Article" : "Publish News Article"}
+            </h2>
+            {editingId && (
+              <button
+                type="button"
+                onClick={resetForm}
+                className="text-sm text-stone-500 underline"
+              >
+                Cancel edit
+              </button>
+            )}
+          </div>
 
           <form onSubmit={handleNews} className="mt-4 grid gap-4 md:grid-cols-2">
             <label className="block text-sm font-medium md:col-span-2">
               Title
               <input
-                name="title"
+                value={form.title}
+                onChange={(e) => setForm({ ...form, title: e.target.value })}
                 required
                 className="mt-1 w-full rounded border border-stone-300 px-3 py-2 outline-none focus:border-stone-900"
               />
@@ -142,9 +329,14 @@ export default function AdminPage() {
             <label className="block text-sm font-medium">
               Category
               <select
-                name="category"
+                value={form.category}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    category: e.target.value as NewsArticle["category"],
+                  })
+                }
                 required
-                defaultValue="Local"
                 className="mt-1 w-full rounded border border-stone-300 px-3 py-2 outline-none focus:border-stone-900"
               >
                 {NEWS_CATEGORIES.map((c) => (
@@ -156,12 +348,12 @@ export default function AdminPage() {
             </label>
 
             <label className="block text-sm font-medium">
-              Cover Image
+              Cover Image {editingId && "(leave empty to keep current)"}
               <input
                 type="file"
-                name="coverImage"
                 accept="image/*"
-                required
+                onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
+                required={!editingId}
                 className="mt-1 block w-full text-sm"
               />
             </label>
@@ -169,7 +361,8 @@ export default function AdminPage() {
             <label className="block text-sm font-medium md:col-span-2">
               Full Body Text
               <textarea
-                name="body"
+                value={form.body}
+                onChange={(e) => setForm({ ...form, body: e.target.value })}
                 required
                 rows={8}
                 className="mt-1 w-full rounded border border-stone-300 px-3 py-2 outline-none focus:border-stone-900"
@@ -181,7 +374,11 @@ export default function AdminPage() {
               disabled={newsLoading}
               className="md:col-span-2 rounded bg-stone-900 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
             >
-              {newsLoading ? "Publishing…" : "Publish Article"}
+              {newsLoading
+                ? "Saving…"
+                : editingId
+                  ? "Update Article"
+                  : "Publish Article"}
             </button>
           </form>
           {alert(newsMsg)}

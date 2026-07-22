@@ -1,12 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { promises as fs } from "fs";
 import path from "path";
 import { getSessionFromCookies } from "@/lib/auth";
-import { readNews, writeNews } from "@/lib/news";
+import {
+  readNews,
+  writeNews,
+  uploadImage,
+} from "@/lib/news";
 import type { NewsCategory } from "@/lib/types";
 import { NEWS_CATEGORIES } from "@/lib/types";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
+export async function GET() {
+  const session = await getSessionFromCookies();
+  if (!session) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const articles = await readNews();
+  return NextResponse.json(articles);
+}
 
 export async function POST(request: NextRequest) {
   const session = await getSessionFromCookies();
@@ -48,11 +61,7 @@ export async function POST(request: NextRequest) {
 
     const ext = path.extname(image.name) || ".jpg";
     const filename = `${Date.now()}${ext}`;
-    const uploadDir = path.join(process.cwd(), "public", "uploads");
-    await fs.mkdir(uploadDir, { recursive: true });
-
-    const imageBuffer = Buffer.from(await image.arrayBuffer());
-    await fs.writeFile(path.join(uploadDir, filename), imageBuffer);
+    const coverImage = await uploadImage(image, filename);
 
     const articles = await readNews();
     const article = {
@@ -60,7 +69,7 @@ export async function POST(request: NextRequest) {
       title,
       category,
       body,
-      coverImage: `/uploads/${filename}`,
+      coverImage,
       publishedAt: new Date().toISOString(),
     };
 
