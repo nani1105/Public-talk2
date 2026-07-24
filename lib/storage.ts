@@ -5,6 +5,7 @@ import type { NewsArticle } from "./types";
 
 const NEWS_BLOB_KEY = "news-data.json";
 const EPAPER_BLOB_KEY = "epaper.pdf";
+const DEFAULT_NEWS_PAYLOAD = JSON.stringify([], null, 2);
 
 const NEWS_PATH = path.join(process.cwd(), "data", "news.json");
 const EPAPER_PATH = path.join(process.cwd(), "public", "epaper.pdf");
@@ -17,8 +18,24 @@ export function usesBlobStorage() {
   );
 }
 
+async function ensureDefaultNewsBlob() {
+  if (!usesBlobStorage()) return;
+
+  try {
+    await head(NEWS_BLOB_KEY);
+  } catch {
+    await put(NEWS_BLOB_KEY, DEFAULT_NEWS_PAYLOAD, {
+      access: "public",
+      addRandomSuffix: false,
+      contentType: "application/json",
+      allowOverwrite: true,
+    });
+  }
+}
+
 async function readNewsFromBlob(): Promise<NewsArticle[]> {
   try {
+    await ensureDefaultNewsBlob();
     const meta = await head(NEWS_BLOB_KEY);
     const res = await fetch(meta.url, { cache: "no-store" });
     if (!res.ok) return [];
