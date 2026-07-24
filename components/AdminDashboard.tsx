@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { FormEvent, useState } from "react";
+import { createBrowserSupabaseClient } from "@/lib/supabase-browser";
 import { NEWS_CATEGORIES, type NewsArticle } from "@/types/news";
 
 type Feedback = {
@@ -25,19 +26,65 @@ export function AdminDashboard({ initialArticles }: AdminDashboardProps) {
   const uploadEpaper = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     const form = event.currentTarget;
+    const formData = new FormData(form);
+    const file = formData.get("epaper");
+
+    if (!(file instanceof File)) {
+      setEpaperFeedback({ type: "error", text: "Please select a PDF file." });
+      return;
+    }
+
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      setEpaperFeedback({ type: "error", text: "Only PDF files are allowed." });
+      return;
+    }
+
     setEpaperFeedback(null);
     setIsUploadingEpaper(true);
 
-    const response = await fetch("/api/admin/epaper", {
+    const tokenResponse = await fetch("/api/admin/epaper", {
       method: "POST",
-      body: new FormData(form)
+      body: JSON.stringify({
+        filename: file.name,
+        contentType: file.type || "application/pdf",
+        size: file.size
+      }),
+      headers: {
+        "Content-Type": "application/json"
+      }
     });
 
-    setIsUploadingEpaper(false);
-    const data = (await response.json().catch(() => null)) as { error?: string } | null;
+    const uploadToken = (await tokenResponse.json().catch(() => null)) as
+      | {
+          bucket?: string;
+          path?: string;
+          token?: string;
+          error?: string;
+        }
+      | null;
 
-    if (!response.ok) {
-      setEpaperFeedback({ type: "error", text: data?.error ?? "PDF upload failed." });
+    if (!tokenResponse.ok || !uploadToken?.bucket || !uploadToken.path || !uploadToken.token) {
+      setIsUploadingEpaper(false);
+      setEpaperFeedback({
+        type: "error",
+        text: uploadToken?.error ?? "Unable to prepare PDF upload."
+      });
+      return;
+    }
+
+    const supabase = createBrowserSupabaseClient();
+    const { error: uploadError } = await supabase.storage
+      .from(uploadToken.bucket)
+      .uploadToSignedUrl(uploadToken.path, uploadToken.token, file, {
+        cacheControl: "60",
+        contentType: "application/pdf",
+        upsert: false
+      });
+
+    setIsUploadingEpaper(false);
+
+    if (uploadError) {
+      setEpaperFeedback({ type: "error", text: uploadError.message });
       return;
     }
 

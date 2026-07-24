@@ -7,15 +7,22 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: Request) {
   try {
-    const formData = await request.formData();
-    const file = formData.get("epaper");
+    const body = (await request.json()) as {
+      filename?: string;
+      contentType?: string;
+      size?: number;
+    };
 
-    if (!(file instanceof File)) {
-      return NextResponse.json({ error: "A PDF file is required." }, { status: 400 });
+    if (!body.filename?.toLowerCase().endsWith(".pdf")) {
+      return NextResponse.json({ error: "A PDF filename is required." }, { status: 400 });
     }
 
-    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+    if (body.contentType && body.contentType !== "application/pdf") {
       return NextResponse.json({ error: "Only PDF files are allowed." }, { status: 400 });
+    }
+
+    if (!body.size || body.size <= 0) {
+      return NextResponse.json({ error: "The PDF file is empty." }, { status: 400 });
     }
 
     const supabase = createServiceClient();
@@ -28,19 +35,21 @@ export async function POST(request: Request) {
       console.error(removeError);
     }
 
-    const { error: uploadError } = await bucket.upload(epaperPath, file, {
-        contentType: "application/pdf",
-        upsert: false,
-        cacheControl: "60"
-      });
+    const { data, error: signedUrlError } = await bucket.createSignedUploadUrl(epaperPath, {
+      upsert: false
+    });
 
-    if (uploadError) {
-      return NextResponse.json({ error: uploadError.message }, { status: 500 });
+    if (signedUrlError) {
+      return NextResponse.json({ error: signedUrlError.message }, { status: 500 });
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({
+      bucket: env.epaperBucket(),
+      path: data.path,
+      token: data.token
+    });
   } catch (error) {
     console.error(error);
-    return NextResponse.json({ error: "Unable to upload e-paper." }, { status: 500 });
+    return NextResponse.json({ error: "Unable to prepare e-paper upload." }, { status: 500 });
   }
 }
