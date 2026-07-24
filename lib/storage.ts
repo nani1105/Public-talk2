@@ -10,8 +10,11 @@ const NEWS_PATH = path.join(process.cwd(), "data", "news.json");
 const EPAPER_PATH = path.join(process.cwd(), "public", "epaper.pdf");
 const UPLOAD_DIR = path.join(process.cwd(), "public", "uploads");
 
+/** True when Vercel Blob is available (OIDC on Vercel or read-write token locally). */
 export function usesBlobStorage() {
-  return Boolean(process.env.BLOB_READ_WRITE_TOKEN);
+  return Boolean(
+    process.env.BLOB_STORE_ID || process.env.BLOB_READ_WRITE_TOKEN
+  );
 }
 
 async function readNewsFromBlob(): Promise<NewsArticle[]> {

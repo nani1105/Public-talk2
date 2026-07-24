@@ -12,17 +12,44 @@ npm run dev
 
 ## Vercel deployment (required setup)
 
-Vercel uses a **read-only filesystem**, so uploads must use **Vercel Blob**:
+Vercel uses a **read-only filesystem**, so uploads use **Vercel Blob**.
 
-1. Open your Vercel project → **Storage** → **Create Database / Store** → **Blob**
-2. Connect the Blob store to your project (adds `BLOB_READ_WRITE_TOKEN` automatically)
-3. In **Settings → Environment Variables**, add:
-   - `ADMIN_USERNAME`
-   - `ADMIN_PASSWORD`
-   - `JWT_SECRET` (32+ random characters)
-4. Redeploy
+### 1. Connect Blob storage
 
-Without Blob storage, file uploads and the e-paper will not persist and `/epaper.pdf` will 404.
+1. Vercel project → **Storage** → **Blob** → connect store to this project
+2. Prefer **OIDC** (default for new connections). Vercel adds `BLOB_STORE_ID` automatically.
+
+### 2. Environment variables
+
+In **Settings → Environment Variables** (Production):
+
+| Variable | Required |
+|----------|----------|
+| `ADMIN_USERNAME` | Yes |
+| `ADMIN_PASSWORD` | Yes |
+| `JWT_SECRET` | Yes (32+ random chars) |
+| `BLOB_STORE_ID` | Auto-set when Blob is linked |
+| `BLOB_READ_WRITE_TOKEN` | Optional — only for local CLI or non-Vercel hosts |
+
+### 3. OIDC upgrade (recommended)
+
+If Vercel shows *“All connected projects use OIDC”*:
+
+1. **Redeploy** the project first (so builds pick up `BLOB_STORE_ID`)
+2. Confirm uploads work on `/admin` after redeploy
+3. **Revoke** `BLOB_READ_WRITE_TOKEN` in the Blob store if you don’t use it outside Vercel
+
+The `@vercel/blob` SDK uses OIDC automatically on Vercel (`BLOB_STORE_ID` + short-lived token at runtime). You do **not** need `BLOB_READ_WRITE_TOKEN` on Vercel after OIDC is active.
+
+### 4. Local dev with Blob (optional)
+
+```bash
+vercel link
+vercel env pull .env.local
+npm run dev
+```
+
+Without Blob env vars, the app falls back to local files (`data/news.json`, `public/`).
 
 ## Environment variables
 
@@ -30,7 +57,8 @@ Without Blob storage, file uploads and the e-paper will not persist and `/epaper
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD=your-secure-password
 JWT_SECRET=your-long-random-secret-at-least-32-chars
-BLOB_READ_WRITE_TOKEN=   # auto-set by Vercel when Blob is linked
+# On Vercel (OIDC): BLOB_STORE_ID is auto-set — no token required
+# Local dev: vercel env pull, or set BLOB_READ_WRITE_TOKEN
 ```
 
 ## Routes
