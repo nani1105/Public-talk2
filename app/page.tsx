@@ -24,7 +24,7 @@ export default async function Home() {
                 Independent News Agency
               </p>
               <h1 className="mt-2 font-serif text-5xl font-black leading-none md:text-7xl">
-                The Daily Ledger
+                Public Talk
               </h1>
             </div>
             <div className="max-w-sm border-l-4 border-neutral-950 pl-4 text-sm font-semibold leading-6">

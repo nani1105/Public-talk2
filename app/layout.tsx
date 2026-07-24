@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "The Daily Ledger",
+  title: "Public Talk",
   description: "Modern news agency with daily e-paper and protected publishing portal"
 };
 

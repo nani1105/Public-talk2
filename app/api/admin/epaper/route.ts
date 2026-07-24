@@ -19,16 +19,23 @@ export async function POST(request: Request) {
     }
 
     const supabase = createServiceClient();
-    const { error } = await supabase.storage
-      .from(env.epaperBucket())
-      .upload(env.epaperPath(), file, {
+    const bucket = supabase.storage.from(env.epaperBucket());
+    const epaperPath = env.epaperPath();
+
+    const { error: removeError } = await bucket.remove([epaperPath]);
+
+    if (removeError) {
+      console.error(removeError);
+    }
+
+    const { error: uploadError } = await bucket.upload(epaperPath, file, {
         contentType: "application/pdf",
-        upsert: true,
+        upsert: false,
         cacheControl: "60"
       });
 
-    if (error) {
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (uploadError) {
+      return NextResponse.json({ error: uploadError.message }, { status: 500 });
     }
 
     return NextResponse.json({ ok: true });
