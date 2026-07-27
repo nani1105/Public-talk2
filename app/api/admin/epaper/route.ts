@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSessionFromCookies } from "@/lib/auth";
-import { uploadEpaper, getEpaperUrl, deleteEpaper } from "@/lib/storage";
+import { uploadEpaper, getEpaperUrl, deleteEpaper } from "@/lib/news";
 
 const MAX_PDF_BYTES = 25 * 1024 * 1024;
 
