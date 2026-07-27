@@ -1,5 +1,5 @@
 import Image from "next/image";
-import { getEpaperUrl, getLatestNews } from "@/lib/news";
+import { getLatestNews } from "@/lib/news";
 
 export const revalidate = 0;
 export const dynamic = "force-dynamic";
@@ -12,7 +12,7 @@ const formatDate = (date: string) =>
 
 export default async function Home() {
   const articles = await getLatestNews();
-  const epaperUrl = getEpaperUrl();
+  const epaperUrl = "/api/epaper";
 
   return (
     <main className="min-h-screen bg-[#f7f4ed] text-neutral-950">
@@ -45,7 +45,7 @@ export default async function Home() {
             </div>
             <a
               href={epaperUrl}
-              download
+              download="epaper.pdf"
               className="inline-flex items-center justify-center border-2 border-neutral-950 bg-neutral-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-800"
             >
               Download PDF
@@ -56,6 +56,8 @@ export default async function Home() {
               src={epaperUrl}
               title="Daily e-paper PDF"
               className="h-full w-full"
+              loading="eager"
+              allow="fullscreen"
             />
           </div>
         </section>

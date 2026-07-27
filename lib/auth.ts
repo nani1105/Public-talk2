@@ -1,3 +1,4 @@
+import { cookies } from "next/headers";
 import { SignJWT } from "jose/jwt/sign";
 import { jwtVerify } from "jose/jwt/verify";
 import { env } from "@/lib/env";
@@ -26,4 +27,10 @@ export const verifyAdminToken = async (token: string | undefined) => {
   } catch {
     return false;
   }
+};
+
+export const getSessionFromCookies = async () => {
+  const cookieStore = await cookies();
+  const token = cookieStore.get(ADMIN_COOKIE)?.value;
+  return verifyAdminToken(token);
 };
