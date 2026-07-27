@@ -43,22 +43,40 @@ export default async function Home() {
               </p>
               <h2 className="font-serif text-3xl font-black">Daily E-Paper</h2>
             </div>
-            <a
-              href={epaperUrl}
-              download="epaper.pdf"
-              className="inline-flex items-center justify-center border-2 border-neutral-950 bg-neutral-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-800"
-            >
-              Download PDF
-            </a>
+            <div className="flex flex-wrap gap-2">
+              <a
+                href={epaperUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center justify-center border-2 border-neutral-950 bg-neutral-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-800"
+              >
+                Open PDF
+              </a>
+              <a
+                href={epaperUrl}
+                download="epaper.pdf"
+                className="inline-flex items-center justify-center border-2 border-neutral-950 bg-white px-4 py-2 text-sm font-bold text-neutral-950 transition hover:bg-stone-100"
+              >
+                Download PDF
+              </a>
+            </div>
           </div>
-          <div className="h-[70vh] min-h-[520px] overflow-hidden border-4 border-neutral-950 bg-white shadow-[8px_8px_0_#171717]">
-            <iframe
-              src={epaperUrl}
-              title="Daily e-paper PDF"
-              className="h-full w-full"
-              loading="eager"
-              allow="fullscreen"
-            />
+          <div className="flex h-[70vh] min-h-[520px] items-center justify-center overflow-hidden border-4 border-neutral-950 bg-white shadow-[8px_8px_0_#171717] p-4">
+            <object data={epaperUrl} type="application/pdf" className="h-full w-full">
+              <div className="flex max-w-md flex-col items-start gap-3 text-left">
+                <p className="text-sm font-semibold text-neutral-700">
+                  Your browser could not render the PDF inline. Open it directly to view or download it.
+                </p>
+                <a
+                  href={epaperUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center border-2 border-neutral-950 bg-neutral-950 px-4 py-2 text-sm font-bold text-white transition hover:bg-red-800"
+                >
+                  Open PDF in Browser
+                </a>
+              </div>
+            </object>
           </div>
         </section>
 
