@@ -13,7 +13,8 @@
     "jose": "latest",
     "next": "latest",
     "react": "latest",
-    "react-dom": "latest"
+    "react-dom": "latest",
+    "react-pdf": "^10.4.1"
   },
   "devDependencies": {
     "@eslint/eslintrc": "latest",
