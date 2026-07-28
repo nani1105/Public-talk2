@@ -3,12 +3,12 @@
 import { useEffect, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 
-// Import standard react-pdf styles for correct text & annotation rendering
+// Import standard react-pdf styles for correct layer rendering
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
 
-// Configure pdfjs worker source using CDN
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
+// Configure PDF worker using CDN
+pdfjs.GlobalWorkerOptions.workerSrc = `https://unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`;
 
 type EpaperViewerProps = {
   url: string;
@@ -16,13 +16,13 @@ type EpaperViewerProps = {
 
 export default function EpaperViewer({ url }: EpaperViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
-  const [status, setStatus] = useState<"loading" | "ready" | "empty">("loading");
+  const [pageNumber, setPageNumber] = useState<number>(1);
   const [containerWidth, setContainerWidth] = useState<number>(600);
 
-  // Measure screen width for responsive mobile rendering
+  // Responsive width calculation for mobile screens
   useEffect(() => {
     const updateWidth = () => {
-      const padding = 32; // Screen side paddings
+      const padding = 32;
       const calculatedWidth = Math.min(window.innerWidth - padding, 800);
       setContainerWidth(calculatedWidth);
     };
@@ -32,83 +32,72 @@ export default function EpaperViewer({ url }: EpaperViewerProps) {
     return () => window.removeEventListener("resize", updateWidth);
   }, []);
 
-  // Pre-check if the file exists at the given endpoint
-  useEffect(() => {
-    let cancelled = false;
-    setStatus("loading");
-
-    fetch(url, { method: "GET", cache: "no-store" })
-      .then((res) => {
-        if (cancelled) return;
-        if (res.status === 404 || !res.ok) {
-          setStatus("empty");
-          return;
-        }
-        setStatus("ready");
-      })
-      .catch(() => {
-        if (!cancelled) setStatus("empty");
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [url]);
-
-  if (status === "loading") {
-    return (
-      <div className="flex min-h-[420px] w-full items-center justify-center rounded-2xl border-2 border-neutral-200 bg-[#f7f4ed] p-3">
-        <div className="flex flex-col items-center gap-3 text-neutral-500">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-neutral-300 border-t-neutral-700" />
-          <p className="text-sm font-semibold">Loading e-paper…</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (status === "empty") {
-    return (
-      <div className="flex min-h-[420px] w-full items-center justify-center rounded-2xl border-2 border-dashed border-neutral-300 bg-[#f7f4ed] p-6">
-        <div className="text-center">
-          <p className="font-serif text-xl font-black text-neutral-800">
-            No e-paper published yet
-          </p>
-          <p className="mt-2 text-sm font-medium text-neutral-500">
-            The next edition will appear here automatically once it is uploaded.
-          </p>
-        </div>
-      </div>
-    );
-  }
+  // Handle page navigation
+  const changePage = (offset: number) => {
+    setPageNumber((prevPageNumber) => {
+      const newPage = prevPageNumber + offset;
+      return numPages ? Math.min(Math.max(newPage, 1), numPages) : prevPageNumber;
+    });
+  };
 
   return (
-    <div className="flex flex-col items-center w-full max-h-[80vh] overflow-y-auto rounded-2xl border-2 border-neutral-200 bg-[#f7f4ed] p-2 sm:p-4">
-      <Document
-        file={url}
-        onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-        loading={
-          <div className="p-4 text-sm font-semibold text-neutral-600">
-            Rendering pages...
-          </div>
-        }
-        error={
-          <div className="p-4 text-sm font-semibold text-red-600">
-            Failed to load PDF document.
-          </div>
-        }
-      >
-        {numPages &&
-          Array.from(new Array(numPages), (_, index) => (
-            <Page
-              key={`page_${index + 1}`}
-              pageNumber={index + 1}
-              width={containerWidth}
-              renderTextLayer={false}
-              renderAnnotationLayer={false}
-              className="mb-4 shadow-md rounded-lg overflow-hidden bg-white"
-            />
-          ))}
-      </Document>
+    <div className="flex flex-col items-center w-full rounded-2xl border-2 border-neutral-200 bg-[#f7f4ed] p-2 sm:p-4">
+      {/* Navigation Toolbar */}
+      {numPages && (
+        <div className="mb-4 flex items-center justify-between w-full max-w-md bg-white p-2 rounded-xl border border-neutral-300 shadow-sm">
+          <button
+            type="button"
+            disabled={pageNumber <= 1}
+            onClick={() => changePage(-1)}
+            className="px-4 py-1.5 text-sm font-bold bg-neutral-900 text-white rounded-lg disabled:opacity-30 hover:bg-red-800 transition active:scale-95"
+          >
+            ← Prev
+          </button>
+          
+          <span className="text-sm font-bold text-neutral-800 select-none">
+            Page {pageNumber} of {numPages}
+          </span>
+
+          <button
+            type="button"
+            disabled={pageNumber >= numPages}
+            onClick={() => changePage(1)}
+            className="px-4 py-1.5 text-sm font-bold bg-neutral-900 text-white rounded-lg disabled:opacity-30 hover:bg-red-800 transition active:scale-95"
+          >
+            Next →
+          </button>
+        </div>
+      )}
+
+      {/* PDF Document Container */}
+      <div className="flex justify-center w-full overflow-x-auto min-h-[450px]">
+        <Document
+          file={url}
+          onLoadSuccess={({ numPages }) => {
+            setNumPages(numPages);
+            setPageNumber(1);
+          }}
+          loading={
+            <div className="flex items-center justify-center p-12 text-sm font-semibold text-neutral-600">
+              Loading e-paper...
+            </div>
+          }
+          error={
+            <div className="flex items-center justify-center p-12 text-sm font-semibold text-red-600">
+              Failed to load e-paper edition.
+            </div>
+          }
+        >
+          <Page
+            key={`page_${pageNumber}`}
+            pageNumber={pageNumber}
+            width={containerWidth}
+            renderTextLayer={false}
+            renderAnnotationLayer={false}
+            className="shadow-lg rounded-lg overflow-hidden bg-white"
+          />
+        </Document>
+      </div>
     </div>
   );
 }
