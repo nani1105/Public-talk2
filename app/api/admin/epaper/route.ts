@@ -19,18 +19,16 @@ export async function POST(request: NextRequest) {
     const formData = await request.formData();
     const file = formData.get("pdf");
 
-    if (!(file instanceof File) || file.type !== "application/pdf") {
-      return NextResponse.json(
-        { error: "A valid PDF file is required" },
-        { status: 400 }
-      );
+    if (!(file instanceof File)) {
+      return NextResponse.json({ error: "A valid PDF file is required" }, { status: 400 });
+    }
+
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      return NextResponse.json({ error: "Only PDF files are allowed" }, { status: 400 });
     }
 
     if (file.size > MAX_PDF_BYTES) {
-      return NextResponse.json(
-        { error: "PDF must be 25MB or smaller" },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: "PDF must be 25MB or smaller" }, { status: 400 });
     }
 
     const url = await uploadEpaper(file);
@@ -41,8 +39,10 @@ export async function POST(request: NextRequest) {
       url,
       viewerUrl: "/api/epaper",
     });
-  } catch {
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+  } catch (error) {
+    console.error("[admin/epaper] upload failed", error);
+    const message = error instanceof Error ? error.message : "Upload failed";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }
 

@@ -16,19 +16,43 @@ const getExtension = (filename: string) => {
   return extension ? `.${extension}` : "";
 };
 
+const getCoverImage = (formData: FormData) => {
+  const image = formData.get("image") ?? formData.get("coverImage");
+  return image instanceof File ? image : null;
+};
+
+export async function GET() {
+  try {
+    const supabase = createServiceClient();
+    const { data, error } = await supabase
+      .from("news")
+      .select("*")
+      .order("published_at", { ascending: false });
+
+    if (error) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+
+    return NextResponse.json(data ?? []);
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json({ error: "Unable to load articles." }, { status: 500 });
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const title = String(formData.get("title") ?? "").trim();
     const category = String(formData.get("category") ?? "").trim() as NewsCategory;
     const body = String(formData.get("body") ?? "").trim();
-    const image = formData.get("image");
+    const image = getCoverImage(formData);
 
     if (!title || !body || !NEWS_CATEGORIES.includes(category)) {
       return NextResponse.json({ error: "Title, category, and body are required." }, { status: 400 });
     }
 
-    if (!(image instanceof File)) {
+    if (!image) {
       return NextResponse.json({ error: "A cover image is required." }, { status: 400 });
     }
 

@@ -2,6 +2,15 @@ import { createClient } from "@supabase/supabase-js";
 import { env } from "@/lib/env";
 import type { NewsArticle } from "@/types/news";
 
+const getSupabaseBaseUrl = () => {
+  const rawUrl = env.supabaseUrl().trim();
+  if (!rawUrl) {
+    return "https://example.supabase.co";
+  }
+
+  return rawUrl.replace(/\/+$/, "");
+};
+
 type Database = {
   public: {
     Tables: {
@@ -23,7 +32,7 @@ type Database = {
 };
 
 export const createServiceClient = () => {
-  return createClient<Database>(env.supabaseUrl(), env.supabaseServiceRoleKey(), {
+  return createClient<Database>(getSupabaseBaseUrl(), env.supabaseServiceRoleKey(), {
     auth: {
       persistSession: false,
       autoRefreshToken: false

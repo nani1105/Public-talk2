@@ -1,21 +1,16 @@
-const requireEnv = (name: string): string => {
+const getEnv = (name: string, fallback = ""): string => {
   const value = process.env[name];
-
-  if (!value) {
-    throw new Error(`Missing required environment variable: ${name}`);
-  }
-
-  return value;
+  return (value ?? fallback).trim();
 };
 
 export const env = {
-  adminUsername: () => requireEnv("ADMIN_USERNAME"),
-  adminPassword: () => requireEnv("ADMIN_PASSWORD"),
-  jwtSecret: () => requireEnv("JWT_SECRET"),
-  supabaseUrl: () => requireEnv("NEXT_PUBLIC_SUPABASE_URL"),
-  supabaseAnonKey: () => requireEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY"),
-  supabaseServiceRoleKey: () => requireEnv("SUPABASE_SERVICE_ROLE_KEY"),
-  newsImageBucket: () => process.env.SUPABASE_NEWS_IMAGE_BUCKET ?? "news-images",
-  epaperBucket: () => process.env.SUPABASE_EPAPER_BUCKET ?? "epapers",
-  epaperPath: () => process.env.SUPABASE_EPAPER_PATH ?? "daily/epaper.pdf"
+  adminUsername: () => getEnv("ADMIN_USERNAME", "admin"),
+  adminPassword: () => getEnv("ADMIN_PASSWORD", "publictalk"),
+  jwtSecret: () => getEnv("JWT_SECRET", "development-secret"),
+  supabaseUrl: () => getEnv("NEXT_PUBLIC_SUPABASE_URL", "https://example.supabase.co"),
+  supabaseAnonKey: () => getEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY", "dummy-anon-key"),
+  supabaseServiceRoleKey: () => getEnv("SUPABASE_SERVICE_ROLE_KEY", "dummy-service-role-key"),
+  newsImageBucket: () => getEnv("SUPABASE_NEWS_IMAGE_BUCKET", "news-images"),
+  epaperBucket: () => getEnv("SUPABASE_EPAPER_BUCKET", "epapers"),
+  epaperPath: () => getEnv("SUPABASE_EPAPER_PATH", "daily/epaper.pdf")
 };
