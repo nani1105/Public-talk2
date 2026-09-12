@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
+import { env } from "@/lib/env";
 
 const COOKIE_NAME = "admin_token";
 
 export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
   const token = request.cookies.get(COOKIE_NAME)?.value;
 
-  // Helper function to build clean redirect URLs safely on Vercel
+  // Helper function to build clean redirect URLs safely
   const redirectToLogin = () => {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
@@ -26,12 +26,8 @@ export async function middleware(request: NextRequest) {
   }
 
   try {
-    const secret = process.env.JWT_SECRET;
-    if (!secret) {
-      console.error("JWT_SECRET environment variable is not defined");
-      return redirectToLogin();
-    }
-
+    const secret = env.jwtSecret();
+    
     // Verify token with jose
     await jwtVerify(token, new TextEncoder().encode(secret));
     

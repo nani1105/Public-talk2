@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { createServiceClient, getPublicFileUrl } from "@/lib/supabase";
 import { env } from "@/lib/env";
+import fs from "fs";
+import path from "path";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -13,39 +15,47 @@ const PDF_HEADERS = {
 } as const;
 
 export async function GET() {
-  const supabase = createServiceClient();
+  const url = env.supabaseUrl();
+  const isRealSupabase = Boolean(url && !url.includes("example.supabase.co") && !url.includes("dummy"));
 
-  // Attempt 1: download via Supabase service client
-  try {
-    const { data, error } = await supabase.storage
-      .from(env.epaperBucket())
-      .download(env.epaperPath());
+  // If real Supabase is configured, try fetching from Supabase Storage first
+  if (isRealSupabase) {
+    try {
+      const supabase = createServiceClient();
+      const { data, error } = await supabase.storage
+        .from(env.epaperBucket())
+        .download(env.epaperPath());
 
-    if (error) {
-      console.error("[epaper] supabase download error:", error.message);
+      if (data && !error) {
+        const arrayBuffer = await data.arrayBuffer();
+        return new NextResponse(new Uint8Array(arrayBuffer), { status: 200, headers: PDF_HEADERS });
+      }
+    } catch (err) {
+      console.error("[epaper] Supabase download error:", err);
     }
 
-    if (data && !error) {
-      const bytes = await data.arrayBuffer();
-      return new NextResponse(bytes, { status: 200, headers: PDF_HEADERS });
+    try {
+      const publicUrl = getPublicFileUrl(env.epaperBucket(), env.epaperPath());
+      const response = await fetch(publicUrl, { cache: "no-store" });
+      if (response.ok) {
+        const arrayBuffer = await response.arrayBuffer();
+        return new NextResponse(new Uint8Array(arrayBuffer), { status: 200, headers: PDF_HEADERS });
+      }
+    } catch (err) {
+      console.error("[epaper] Supabase public fetch error:", err);
     }
-  } catch (err) {
-    console.error("[epaper] service client threw:", err);
   }
 
-  // Attempt 2: fetch the public URL directly
+  // Local fallback: serve public/epaper.pdf safely as Uint8Array
   try {
-    const publicUrl = getPublicFileUrl(env.epaperBucket(), env.epaperPath());
-    const response = await fetch(publicUrl, { cache: "no-store" });
-
-    if (response.ok) {
-      const bytes = await response.arrayBuffer();
-      return new NextResponse(bytes, { status: 200, headers: PDF_HEADERS });
+    const localPath = path.join(process.cwd(), "public", "epaper.pdf");
+    if (fs.existsSync(localPath)) {
+      const buffer = await fs.promises.readFile(localPath);
+      const uint8Array = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+      return new NextResponse(uint8Array, { status: 200, headers: PDF_HEADERS });
     }
-
-    console.error("[epaper] public fetch failed:", response.status, publicUrl);
   } catch (err) {
-    console.error("[epaper] public fetch threw:", err);
+    console.error("[epaper] Local file fallback error:", err);
   }
 
   return NextResponse.json(

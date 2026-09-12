@@ -1,36 +1,122 @@
 import { createServiceClient, getPublicFileUrl } from "@/lib/supabase";
 import { env } from "@/lib/env";
 import type { NewsArticle } from "@/types/news";
+import fs from "fs";
+import path from "path";
+
+const DUMMY_ARTICLES: NewsArticle[] = [
+  {
+    id: "dummy-1",
+    title: "City Council Approves New Infrastructure & Public Transit Modernization Plan",
+    category: "Politics",
+    snippet: "The municipal assembly voted unanimously to allocate fresh funding for road reconstruction, green transit corridors, and public facility upgrades across central districts.",
+    body: "In a landmark legislative session, the City Council today officially passed the 2026 Urban Modernization & Transit Improvement Bill. The comprehensive package earmarks resources for repaving major thoroughfares, expanding electric bus routes, and renovating historical public squares. Civic leaders highlighted that the project will generate hundreds of regional jobs while significantly cutting commute times.",
+    image_url: "https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80",
+    image_path: "",
+    published_at: new Date(Date.now() - 1000 * 60 * 60 * 2).toISOString(),
+  },
+  {
+    id: "dummy-2",
+    title: "Annual Agricultural Fair Highlights Local Farmers & Sustainable Innovation",
+    category: "Local",
+    snippet: "Over fifty regional producers showcased organic harvests, water-saving irrigation tech, and artisanal food products at the annual state exhibition grounds.",
+    body: "The annual Public Talk Agricultural & Produce Exhibition opened to record turnout today. Local farming cooperatives presented breakthrough solar-powered drip irrigation systems alongside premium organic produce. Event organizers emphasized the importance of empowering smallholder farmers and securing local food supply chains.",
+    image_url: "https://images.unsplash.com/photo-1500937386664-56d1dfef3854?auto=format&fit=crop&w=1200&q=80",
+    image_path: "",
+    published_at: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(),
+  },
+  {
+    id: "dummy-3",
+    title: "Regional Tech Summit Focuses on Artificial Intelligence & Cyber Defense",
+    category: "Business",
+    snippet: "Industry leaders, startup founders, and policy experts gathered to address responsible AI deployment, cybersecurity standards, and tech employment growth.",
+    body: "Technology executives and policy makers convened for the opening keynote of the Regional Tech & Innovation Summit. Panelists discussed emerging frameworks for data privacy, cloud resilience, and supporting local tech incubators. The summit also unveiled a new youth vocational training initiative.",
+    image_url: "https://images.unsplash.com/photo-1519389950473-47ba0277781c?auto=format&fit=crop&w=1200&q=80",
+    image_path: "",
+    published_at: new Date(Date.now() - 1000 * 60 * 60 * 8).toISOString(),
+  },
+  {
+    id: "dummy-4",
+    title: "District Championship Finals Draw Record Crowds in High-Stakes Opener",
+    category: "Sports",
+    snippet: "The underdog team secured a dramatic victory in the final minutes of extra time, thrilling thousands of spectators at the central stadium.",
+    body: "Fans filled the county arena to capacity as the seasonal championship final reached an exhilarating finish. The home team mounted a remarkable fourth-quarter comeback, sealing a 3-2 victory with a last-minute goal. Coach lauded the squad's resilience and disciplined teamwork.",
+    image_url: "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?auto=format&fit=crop&w=1200&q=80",
+    image_path: "",
+    published_at: new Date(Date.now() - 1000 * 60 * 60 * 12).toISOString(),
+  },
+  {
+    id: "dummy-5",
+    title: "Global Energy Forum Signs Accord on Clean Power Expansion & Grid Storage",
+    category: "World",
+    snippet: "International delegates committed to joint investments in renewable storage technologies and cross-border clean energy transmission lines.",
+    body: "Representatives from over thirty nations concluded the international energy summit by signing a pact to accelerate battery storage manufacturing and grid interconnection. The agreement aims to stabilize regional energy grids while reducing reliance on fossil fuels.",
+    image_url: "https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?auto=format&fit=crop&w=1200&q=80",
+    image_path: "",
+    published_at: new Date(Date.now() - 1000 * 60 * 60 * 16).toISOString(),
+  },
+  {
+    id: "dummy-6",
+    title: "Public Health Department Opens New Multi-Specialty Clinic in East District",
+    category: "Local",
+    snippet: "The modern healthcare facility will provide accessible diagnostic services, pediatric care, and wellness consultations to over 40,000 residents.",
+    body: "Community members joined public health officials today for the official ribbon-cutting ceremony of the East District Health Center. Equipped with state-of-the-art diagnostic tools, an emergency triage unit, and maternal health services, the facility marks a major milestone in local healthcare infrastructure.",
+    image_url: "https://images.unsplash.com/photo-1519494026892-80bbd2d6fd0d?auto=format&fit=crop&w=1200&q=80",
+    image_path: "",
+    published_at: new Date(Date.now() - 1000 * 60 * 60 * 20).toISOString(),
+  },
+];
 
 export const getLatestNews = async (): Promise<NewsArticle[]> => {
-  const supabase = createServiceClient();
-  const { data, error } = await supabase
-    .from("news")
-    .select("*")
-    .order("published_at", { ascending: false });
+  const url = env.supabaseUrl();
+  const isRealSupabase = Boolean(url && !url.includes("example.supabase.co") && !url.includes("dummy"));
 
-  if (error) {
-    console.error(error);
-    return [];
+  if (isRealSupabase) {
+    try {
+      const supabase = createServiceClient();
+      const { data, error } = await supabase
+        .from("news")
+        .select("*")
+        .order("published_at", { ascending: false });
+
+      if (!error && data && data.length > 0) {
+        return data;
+      }
+    } catch (err) {
+      console.error("[getLatestNews] exception:", err);
+    }
   }
 
-  return data ?? [];
+  // Fallback to rich dummy articles instantly if DB is unconfigured or empty
+  return DUMMY_ARTICLES;
 };
 
 export const uploadEpaper = async (file: File): Promise<string> => {
-  const supabase = createServiceClient();
-  const path = env.epaperPath();
-  const { error } = await supabase.storage.from(env.epaperBucket()).upload(path, file, {
-    contentType: "application/pdf",
-    upsert: true,
-    cacheControl: "31536000",
-  });
+  try {
+    const supabase = createServiceClient();
+    const storagePath = env.epaperPath();
+    const { error } = await supabase.storage.from(env.epaperBucket()).upload(storagePath, file, {
+      contentType: "application/pdf",
+      upsert: true,
+      cacheControl: "31536000",
+    });
 
-  if (error) {
-    throw error;
+    if (!error) {
+      return getPublicFileUrl(env.epaperBucket(), storagePath);
+    }
+
+    console.warn("[uploadEpaper] Supabase storage upload error, saving locally:", error.message);
+  } catch (err) {
+    console.warn("[uploadEpaper] Supabase upload failed, saving locally:", err);
   }
 
-  return getPublicFileUrl(env.epaperBucket(), path);
+  // Fallback: save PDF directly to local public/epaper.pdf
+  const arrayBuffer = await file.arrayBuffer();
+  const buffer = Buffer.from(arrayBuffer);
+  const localFilePath = path.join(process.cwd(), "public", "epaper.pdf");
+  await fs.promises.writeFile(localFilePath, buffer);
+
+  return "/api/epaper";
 };
 
 export const getEpaperUrl = () => {
@@ -39,10 +125,23 @@ export const getEpaperUrl = () => {
 };
 
 export const deleteEpaper = async (): Promise<void> => {
-  const supabase = createServiceClient();
-  const { error } = await supabase.storage.from(env.epaperBucket()).remove([env.epaperPath()]);
+  try {
+    const supabase = createServiceClient();
+    const { error } = await supabase.storage.from(env.epaperBucket()).remove([env.epaperPath()]);
+    if (error) {
+      console.warn("[deleteEpaper] Supabase delete error:", error.message);
+    }
+  } catch (err) {
+    console.warn("[deleteEpaper] Supabase delete exception:", err);
+  }
 
-  if (error) {
-    throw error;
+  // Also remove local file if present
+  try {
+    const localFilePath = path.join(process.cwd(), "public", "epaper.pdf");
+    if (fs.existsSync(localFilePath)) {
+      await fs.promises.unlink(localFilePath);
+    }
+  } catch (err) {
+    console.error("[deleteEpaper] local delete error:", err);
   }
 };

@@ -1,6 +1,5 @@
 import { cookies } from "next/headers";
-import { SignJWT } from "jose/jwt/sign";
-import { jwtVerify } from "jose/jwt/verify";
+import { SignJWT, jwtVerify } from "jose";
 import { env } from "@/lib/env";
 
 export const ADMIN_COOKIE = "admin_token";
