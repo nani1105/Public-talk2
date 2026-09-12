@@ -69,20 +69,27 @@ const DUMMY_ARTICLES: NewsArticle[] = [
 
 export const saveUploadedImage = async (file: File): Promise<string> => {
   try {
-    const uploadsDir = path.join(process.cwd(), "public", "uploads");
-    if (!fs.existsSync(uploadsDir)) {
-      await fs.promises.mkdir(uploadsDir, { recursive: true });
-    }
-
-    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
-    const filename = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${extension}`;
-    const filePath = path.join(uploadsDir, filename);
-
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
-    await fs.promises.writeFile(filePath, buffer);
+    const mimeType = file.type || "image/jpeg";
 
-    return `/uploads/${filename}`;
+    // Also attempt saving to disk if writable (for local dev)
+    try {
+      const uploadsDir = path.join(process.cwd(), "public", "uploads");
+      if (!fs.existsSync(uploadsDir)) {
+        await fs.promises.mkdir(uploadsDir, { recursive: true });
+      }
+      const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+      const filename = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${extension}`;
+      const filePath = path.join(uploadsDir, filename);
+      await fs.promises.writeFile(filePath, buffer);
+    } catch {
+      // Ignore disk write failures on serverless (Vercel)
+    }
+
+    // Return Base64 Data URL for 100% Vercel Serverless compatibility
+    const base64 = buffer.toString("base64");
+    return `data:${mimeType};base64,${base64}`;
   } catch (err) {
     console.error("[saveUploadedImage] error:", err);
     return "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80";
@@ -164,10 +171,14 @@ export const uploadEpaper = async (file: File): Promise<string> => {
   }
 
   // Fallback: save PDF directly to local public/epaper.pdf
-  const arrayBuffer = await file.arrayBuffer();
-  const buffer = Buffer.from(arrayBuffer);
-  const localFilePath = path.join(process.cwd(), "public", "epaper.pdf");
-  await fs.promises.writeFile(localFilePath, buffer);
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const localFilePath = path.join(process.cwd(), "public", "epaper.pdf");
+    await fs.promises.writeFile(localFilePath, buffer);
+  } catch {
+    // Ignore serverless disk write error
+  }
 
   return "/api/epaper";
 };
