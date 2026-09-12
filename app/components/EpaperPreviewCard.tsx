@@ -1,12 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { Document, Page, pdfjs } from "react-pdf";
-
-// Configure worker URL using local worker file
-if (typeof window !== "undefined") {
-  pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
-}
 
 type EpaperPreviewCardProps = {
   epaperUrl: string;
@@ -33,9 +27,7 @@ export default function EpaperPreviewCard({ epaperUrl }: EpaperPreviewCardProps)
           <h2 className="mt-1 font-serif text-2xl font-black text-neutral-950">
             Public Talk E-Paper
           </h2>
-          <p className="text-[11px] font-bold text-neutral-600">
-            {currentDate}
-          </p>
+          <p className="text-[11px] font-bold text-neutral-600">{currentDate}</p>
         </div>
 
         <Link
@@ -46,23 +38,38 @@ export default function EpaperPreviewCard({ epaperUrl }: EpaperPreviewCardProps)
         </Link>
       </div>
 
-      {/* Large Live Cover Preview Render inside Compact Container */}
-      <Link href="/epaper" className="group block relative border-2 border-neutral-950 bg-[#f7f4ed] p-3 shadow-[4px_4px_0_#171717]">
-        <div className="flex justify-center overflow-hidden bg-white border-2 border-neutral-950 shadow-md">
-          <Document file={epaperUrl} loading={<div className="p-8 text-xs font-bold text-neutral-500">Loading cover...</div>} error={null}>
-            <Page
-              pageNumber={1}
-              width={340}
-              renderTextLayer={false}
-              renderAnnotationLayer={false}
-              className="transition-transform duration-300 group-hover:scale-102"
-            />
-          </Document>
-        </div>
-
-        <div className="mt-3 flex items-center justify-between text-xs font-black text-neutral-950 border-t border-neutral-300 pt-2">
-          <span>PAGE 01 COVER PREVIEW</span>
-          <span className="text-red-800 group-hover:underline">OPEN READER →</span>
+      {/* Static Visual Preview Panel — no PDF rendering on homepage for speed */}
+      <Link href="/epaper" className="group block">
+        <div className="relative flex items-center justify-center bg-[#f7f4ed] border-2 border-neutral-950 overflow-hidden h-48 shadow-[4px_4px_0_#171717]">
+          {/* Decorative newspaper-style lines */}
+          <div className="absolute inset-0 flex flex-col p-4 gap-2 pointer-events-none opacity-20">
+            <div className="h-5 w-3/4 bg-neutral-900 rounded-sm" />
+            <div className="h-2 w-full bg-neutral-700 rounded-sm" />
+            <div className="h-2 w-5/6 bg-neutral-700 rounded-sm" />
+            <div className="h-2 w-full bg-neutral-700 rounded-sm" />
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              <div className="space-y-1">
+                <div className="h-12 w-full bg-neutral-500 rounded-sm" />
+                <div className="h-2 w-full bg-neutral-700 rounded-sm" />
+                <div className="h-2 w-4/5 bg-neutral-700 rounded-sm" />
+              </div>
+              <div className="space-y-1">
+                <div className="h-12 w-full bg-neutral-500 rounded-sm" />
+                <div className="h-2 w-full bg-neutral-700 rounded-sm" />
+                <div className="h-2 w-3/4 bg-neutral-700 rounded-sm" />
+              </div>
+            </div>
+          </div>
+          {/* CTA Overlay */}
+          <div className="relative z-10 text-center space-y-2 px-4">
+            <div className="text-4xl">📰</div>
+            <p className="font-serif text-lg font-black text-neutral-900 leading-tight">
+              Open Today's Edition
+            </p>
+            <span className="inline-block border-2 border-neutral-950 bg-neutral-950 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-white group-hover:bg-red-800 transition">
+              Open E-Paper Reader →
+            </span>
+          </div>
         </div>
       </Link>
 

@@ -86,6 +86,8 @@ export default function NewsHero({ article }: NewsHeroProps) {
             <img
               src={article.image_url}
               alt={article.title}
+              loading="lazy"
+              decoding="async"
               className="h-64 w-full object-cover md:h-80 transition-transform duration-500 group-hover:scale-105"
               onError={(e) => {
                 e.currentTarget.onerror = null;

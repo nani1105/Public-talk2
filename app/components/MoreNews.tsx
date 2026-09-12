@@ -56,6 +56,8 @@ export default function MoreNews({ articles }: MoreNewsProps) {
                     <img
                       src={article.image_url}
                       alt={article.title}
+                      loading="lazy"
+                      decoding="async"
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                       onError={(e) => {
                         e.currentTarget.onerror = null;

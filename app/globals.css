@@ -21,19 +21,25 @@ textarea {
 
 @keyframes marquee {
   0% {
-    transform: translateX(0%);
+    transform: translate3d(0%, 0, 0);
   }
   100% {
-    transform: translateX(-50%);
+    transform: translate3d(-50%, 0, 0);
   }
 }
 
 .animate-marquee {
   display: inline-flex;
   white-space: nowrap;
-  animation: marquee 25s linear infinite;
+  will-change: transform;
+  animation: marquee 30s linear infinite;
 }
 
 .animate-marquee:hover {
   animation-play-state: paused;
+}
+
+/* Prevent layout reflow jank on hover interactions */
+* {
+  -webkit-tap-highlight-color: transparent;
 }

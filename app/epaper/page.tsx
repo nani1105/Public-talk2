@@ -1,11 +1,11 @@
 import Link from "next/link";
 import { getLatestNews } from "@/lib/news";
 import BreakingTicker from "@/app/components/BreakingTicker";
-import EpaperViewer from "@/app/components/EpaperViewer";
+import EpaperViewerWrapper from "@/app/components/EpaperViewerWrapper";
 import MoreNews from "@/app/components/MoreNews";
 import Footer from "@/app/components/Footer";
 
-export const revalidate = 0;
+export const revalidate = 30;
 
 export const metadata = {
   title: "Public Talk Daily E-Paper | Today's Edition",
@@ -121,7 +121,7 @@ export default async function EpaperPage() {
         </div>
 
         {/* REACT EPAPER VIEWER & THUMBNAILS */}
-        <EpaperViewer url={epaperUrl} showThumbnails={true} />
+        <EpaperViewerWrapper url={epaperUrl} showThumbnails={true} />
 
         {/* EDITION ARCHIVE SECTION */}
         <section id="archive" className="border-4 border-neutral-950 bg-white p-6 shadow-[8px_8px_0_#171717] space-y-4">

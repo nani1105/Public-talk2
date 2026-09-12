@@ -4,7 +4,7 @@ import HomepageClientWrapper from "@/app/components/HomepageClientWrapper";
 import Footer from "@/app/components/Footer";
 import { getLatestNews } from "@/lib/news";
 
-export const revalidate = 0;
+export const revalidate = 30;
 
 export const metadata = {
   title: "Public Talk | Independent News Agency",
