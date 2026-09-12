@@ -24,6 +24,7 @@ export default function AdminPage() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [coverFile, setCoverFile] = useState<File | null>(null);
+  const [epaperFile, setEpaperFile] = useState<File | null>(null);
 
   const loadData = useCallback(async () => {
     const [newsRes, epaperRes] = await Promise.all([
@@ -87,6 +88,9 @@ export default function AdminPage() {
 
     const formEl = e.currentTarget;
     const fd = new FormData(formEl);
+    if (epaperFile) {
+      fd.set("pdf", epaperFile);
+    }
 
     try {
       const res = await fetch("/api/admin/epaper", { method: "POST", body: fd });
@@ -95,9 +99,10 @@ export default function AdminPage() {
         setEpaperMsg({ type: "err", text: data.error ?? "Upload failed" });
         return;
       }
-      setEpaperMsg({ type: "ok", text: data.message ?? "E-Paper uploaded" });
+      setEpaperMsg({ type: "ok", text: data.message ?? "E-Paper uploaded successfully!" });
       setEpaperUrl(data.url ?? null);
       setEpaperViewerUrl(data.viewerUrl ?? "/api/epaper");
+      setEpaperFile(null);
       formEl.reset();
     } catch {
       setEpaperMsg({ type: "err", text: "Network error" });
@@ -173,10 +178,10 @@ export default function AdminPage() {
     if (!msg) return null;
     return (
       <p
-        className={`mt-3 rounded px-3 py-2 text-sm ${
+        className={`mt-3 border-2 p-3 text-sm font-bold ${
           msg.type === "ok"
-            ? "border border-green-200 bg-green-50 text-green-800"
-            : "border border-red-200 bg-red-50 text-red-700"
+            ? "border-green-800 bg-green-50 text-green-900"
+            : "border-red-800 bg-red-50 text-red-900"
         }`}
       >
         {msg.text}
@@ -185,70 +190,96 @@ export default function AdminPage() {
   }
 
   return (
-    <div className="min-h-screen bg-stone-100">
-      <header className="border-b border-stone-200 bg-white">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-5">
+    <div className="min-h-screen bg-[#f7f4ed] text-neutral-950">
+      <header className="border-b-4 border-neutral-950 bg-[#fbfaf6]">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-6">
           <div>
-            <h1 className="font-serif text-2xl font-black">Publishing Portal</h1>
-            <p className="text-sm text-stone-500">Public Talk Admin</p>
+            <span className="bg-red-800 px-2 py-0.5 text-[10px] font-black uppercase text-white">
+              STAFF PORTAL
+            </span>
+            <h1 className="font-serif text-3xl font-black md:text-4xl text-neutral-950">
+              Public Talk Admin
+            </h1>
           </div>
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="rounded border border-stone-900 px-4 py-2 text-sm font-medium hover:bg-stone-900 hover:text-white"
-          >
-            Logout
-          </button>
+          <div className="flex items-center gap-3">
+            <a
+              href="/"
+              target="_blank"
+              className="border-2 border-neutral-950 bg-white px-3 py-1.5 text-xs font-black uppercase tracking-wider text-neutral-950 hover:bg-neutral-100 shadow-[2px_2px_0_#171717]"
+            >
+              Live Site ↗
+            </a>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="border-2 border-neutral-950 bg-neutral-950 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-white hover:bg-red-800 shadow-[2px_2px_0_#171717]"
+            >
+              Logout
+            </button>
+          </div>
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl space-y-8 px-4 py-8">
-        <section className="rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
-          <h2 className="font-serif text-xl font-bold">Daily E-Paper</h2>
-          <p className="mt-1 text-sm text-stone-500">
-            Upload replaces today&apos;s edition. Delete removes the current PDF.
-          </p>
+      <main className="mx-auto max-w-6xl space-y-8 px-4 py-8">
+        {/* DAILY E-PAPER SECTION */}
+        <section className="border-4 border-neutral-950 bg-white p-6 shadow-[8px_8px_0_#171717]">
+          <div className="flex items-center justify-between border-b-2 border-neutral-950 pb-3">
+            <div>
+              <span className="bg-red-800 px-2 py-0.5 text-[10px] font-black uppercase text-white">
+                EPAPER DISTRIBUTION
+              </span>
+              <h2 className="font-serif text-2xl font-black text-neutral-950">
+                Daily E-Paper Edition
+              </h2>
+            </div>
+            {epaperUrl && (
+              <span className="bg-green-800 px-2.5 py-1 text-xs font-black uppercase text-white">
+                ● Live Edition Online
+              </span>
+            )}
+          </div>
 
-          {epaperUrl ? (
-            <p className="mt-3 text-sm text-green-700">
-              Current edition is live.{" "}
-              <a
-                href={epaperViewerUrl ?? epaperUrl ?? "/api/epaper"}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="underline"
-              >
-                View PDF
-              </a>
-            </p>
-          ) : (
-            <p className="mt-3 text-sm text-stone-500">No e-paper uploaded yet.</p>
-          )}
+          <form onSubmit={handleEpaper} className="mt-5 space-y-4">
+            {/* RECTANGULAR DISTINCT FILE DROPZONE BOX FOR EPAPER */}
+            <div className="relative border-4 border-dashed border-neutral-950 bg-[#f4efe4] hover:bg-[#eae3d2] transition p-6 text-center shadow-[4px_4px_0_#171717] group cursor-pointer">
+              <input
+                type="file"
+                name="pdf"
+                accept=".pdf,application/pdf"
+                onChange={(e) => setEpaperFile(e.target.files?.[0] ?? null)}
+                className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+              />
+              <div className="space-y-2 pointer-events-none">
+                <div className="mx-auto h-12 w-12 border-2 border-neutral-950 bg-white flex items-center justify-center font-black text-xl shadow-[2px_2px_0_#171717]">
+                  📄
+                </div>
+                <p className="font-serif text-base font-black text-neutral-950">
+                  {epaperFile ? epaperFile.name : "CHOOSE PDF E-PAPER FILE"}
+                </p>
+                <p className="text-xs font-bold uppercase text-neutral-600 tracking-wider">
+                  {epaperFile
+                    ? `Selected File (${(epaperFile.size / (1024 * 1024)).toFixed(2)} MB)`
+                    : "Click or drag replacement PDF edition file here [Max 25MB]"}
+                </p>
+              </div>
+            </div>
 
-          <form onSubmit={handleEpaper} className="mt-4">
-            <input
-              type="file"
-              name="pdf"
-              accept=".pdf,application/pdf"
-              required
-              className="block w-full text-sm"
-            />
-            <div className="mt-4 flex gap-3">
+            <div className="flex gap-3">
               <button
                 type="submit"
                 disabled={epaperLoading}
-                className="flex-1 rounded bg-stone-900 py-2 text-sm font-semibold text-white disabled:opacity-60"
+                className="flex-1 border-2 border-neutral-950 bg-neutral-950 py-3 text-xs font-black uppercase tracking-widest text-white shadow-[4px_4px_0_#171717] hover:bg-red-800 transition disabled:opacity-60"
               >
-                {epaperLoading ? "Working…" : epaperUrl ? "Replace E-Paper" : "Upload E-Paper"}
+                {epaperLoading ? "Uploading..." : epaperUrl ? "Replace Live E-Paper" : "Upload E-Paper"}
               </button>
               {epaperUrl && (
                 <button
                   type="button"
                   onClick={handleDeleteEpaper}
                   disabled={epaperLoading}
-                  className="rounded border border-red-300 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                  className="border-2 border-neutral-950 bg-white px-5 py-3 text-xs font-black uppercase tracking-widest text-red-800 shadow-[4px_4px_0_#171717] hover:bg-red-50 disabled:opacity-60"
                 >
-                  Delete
+                  Delete Live Edition
                 </button>
               )}
             </div>
@@ -256,43 +287,59 @@ export default function AdminPage() {
           {alert(epaperMsg)}
         </section>
 
-        <section className="rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
-          <h2 className="font-serif text-xl font-bold">Published Articles</h2>
-          <p className="mt-1 text-sm text-stone-500">
-            {articles.length} article{articles.length !== 1 ? "s" : ""} total
-          </p>
+        {/* PUBLISHED ARTICLES LIST */}
+        <section className="border-4 border-neutral-950 bg-white p-6 shadow-[8px_8px_0_#171717]">
+          <div className="flex items-center justify-between border-b-2 border-neutral-950 pb-3">
+            <div>
+              <span className="bg-red-800 px-2 py-0.5 text-[10px] font-black uppercase text-white">
+                NEWSROOM DESK
+              </span>
+              <h2 className="font-serif text-2xl font-black text-neutral-950">
+                Published Articles
+              </h2>
+            </div>
+            <span className="font-mono text-xs font-black text-neutral-800">
+              {articles.length} ARTICLE{articles.length !== 1 ? "S" : ""} TOTAL
+            </span>
+          </div>
 
           {articles.length === 0 ? (
-            <p className="mt-4 text-sm text-stone-500">No articles yet.</p>
+            <p className="mt-4 text-sm font-bold text-neutral-600">No articles published yet.</p>
           ) : (
-            <ul className="mt-4 divide-y divide-stone-100">
+            <ul className="mt-4 divide-y-2 divide-neutral-200">
               {articles.map((article) => (
-                <li key={article.id} className="flex gap-4 py-4">
+                <li key={article.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 py-4">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={article.image_url}
                     alt=""
-                    className="h-16 w-16 shrink-0 rounded object-cover"
+                    className="h-16 w-20 shrink-0 border-2 border-neutral-950 object-cover shadow-[2px_2px_0_#171717]"
                   />
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium leading-snug">{article.title}</p>
-                    <p className="text-xs text-stone-500">
-                      {article.category} ·{" "}
-                      {new Date(article.published_at).toLocaleDateString()}
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <p className="font-serif text-lg font-black leading-snug text-neutral-950">
+                      {article.title}
                     </p>
+                    <div className="flex items-center gap-2 text-xs font-bold">
+                      <span className="bg-red-800 px-2 py-0.5 uppercase text-white">
+                        {article.category}
+                      </span>
+                      <time className="text-neutral-500">
+                        {new Date(article.published_at).toLocaleDateString()}
+                      </time>
+                    </div>
                   </div>
                   <div className="flex shrink-0 gap-2">
                     <button
                       type="button"
                       onClick={() => startEdit(article)}
-                      className="rounded border border-stone-300 px-3 py-1 text-xs font-medium hover:bg-stone-50"
+                      className="border-2 border-neutral-950 bg-white px-3 py-1.5 text-xs font-black uppercase tracking-wider text-neutral-950 hover:bg-neutral-100 shadow-[2px_2px_0_#171717]"
                     >
-                      Edit
+                      Edit Post
                     </button>
                     <button
                       type="button"
                       onClick={() => handleDeleteArticle(article.id)}
-                      className="rounded border border-red-200 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50"
+                      className="border-2 border-neutral-950 bg-red-800 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-white hover:bg-neutral-950 shadow-[2px_2px_0_#171717]"
                     >
                       Delete
                     </button>
@@ -303,35 +350,41 @@ export default function AdminPage() {
           )}
         </section>
 
-        <section className="rounded-xl border border-stone-200 bg-white p-6 shadow-sm">
-          <div className="flex items-center justify-between">
-            <h2 className="font-serif text-xl font-bold">
-              {editingId ? "Edit Article" : "Publish News Article"}
-            </h2>
+        {/* PUBLISH / EDIT ARTICLE FORM */}
+        <section className="border-4 border-neutral-950 bg-white p-6 shadow-[8px_8px_0_#171717]">
+          <div className="flex items-center justify-between border-b-2 border-neutral-950 pb-3">
+            <div>
+              <span className="bg-red-800 px-2 py-0.5 text-[10px] font-black uppercase text-white">
+                {editingId ? "EDITOR MODE" : "NEW STORY"}
+              </span>
+              <h2 className="font-serif text-2xl font-black text-neutral-950">
+                {editingId ? "Edit News Article" : "Publish News Article"}
+              </h2>
+            </div>
             {editingId && (
               <button
                 type="button"
                 onClick={resetForm}
-                className="text-sm text-stone-500 underline"
+                className="border border-neutral-950 bg-neutral-100 px-3 py-1 text-xs font-black uppercase text-neutral-900 hover:bg-neutral-200"
               >
-                Cancel edit
+                Cancel Edit ✕
               </button>
             )}
           </div>
 
-          <form onSubmit={handleNews} className="mt-4 grid gap-4 md:grid-cols-2">
-            <label className="block text-sm font-medium md:col-span-2">
-              Title
+          <form onSubmit={handleNews} className="mt-5 grid gap-5 md:grid-cols-2">
+            <label className="block text-xs font-black uppercase tracking-wider md:col-span-2 space-y-1">
+              <span>Headline Title</span>
               <input
                 value={form.title}
                 onChange={(e) => setForm({ ...form, title: e.target.value })}
                 required
-                className="mt-1 w-full rounded border border-stone-300 px-3 py-2 outline-none focus:border-stone-900"
+                className="w-full border-2 border-neutral-950 bg-white px-3 py-2.5 outline-none font-serif text-lg font-bold focus:ring-2 focus:ring-red-800"
               />
             </label>
 
-            <label className="block text-sm font-medium">
-              Category
+            <label className="block text-xs font-black uppercase tracking-wider space-y-1">
+              <span>Section Category</span>
               <select
                 value={form.category}
                 onChange={(e) =>
@@ -341,7 +394,7 @@ export default function AdminPage() {
                   })
                 }
                 required
-                className="mt-1 w-full rounded border border-stone-300 px-3 py-2 outline-none focus:border-stone-900"
+                className="w-full border-2 border-neutral-950 bg-white px-3 py-2.5 outline-none font-bold focus:ring-2 focus:ring-red-800"
               >
                 {NEWS_CATEGORIES.map((c) => (
                   <option key={c} value={c}>
@@ -351,38 +404,44 @@ export default function AdminPage() {
               </select>
             </label>
 
-            <label className="block text-sm font-medium">
-              Cover Image {editingId && "(leave empty to keep current)"}
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
-                required={!editingId}
-                className="mt-1 block w-full text-sm"
-              />
-            </label>
+            {/* RECTANGULAR DISTINCT FILE DROPZONE BOX FOR COVER IMAGE */}
+            <div className="block text-xs font-black uppercase tracking-wider space-y-1">
+              <span>Cover Image {editingId && "(Leave empty to keep current)"}</span>
+              <div className="relative border-2 border-dashed border-neutral-950 bg-[#f4efe4] hover:bg-[#eae3d2] transition p-3 text-center shadow-[3px_3px_0_#171717] cursor-pointer">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
+                  required={!editingId}
+                  className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
+                />
+                <div className="pointer-events-none font-mono text-xs font-bold text-neutral-900">
+                  📷 {coverFile ? coverFile.name : "CHOOSE COVER IMAGE FILE"}
+                </div>
+              </div>
+            </div>
 
-            <label className="block text-sm font-medium md:col-span-2">
-              Full Body Text
+            <label className="block text-xs font-black uppercase tracking-wider md:col-span-2 space-y-1">
+              <span>Full Story Text</span>
               <textarea
                 value={form.body}
                 onChange={(e) => setForm({ ...form, body: e.target.value })}
                 required
                 rows={8}
-                className="mt-1 w-full rounded border border-stone-300 px-3 py-2 outline-none focus:border-stone-900"
+                className="w-full border-2 border-neutral-950 bg-white px-3 py-2.5 outline-none font-serif text-base font-medium focus:ring-2 focus:ring-red-800"
               />
             </label>
 
             <button
               type="submit"
               disabled={newsLoading}
-              className="md:col-span-2 rounded bg-stone-900 py-2.5 text-sm font-semibold text-white disabled:opacity-60"
+              className="md:col-span-2 border-2 border-neutral-950 bg-neutral-950 py-3 text-xs font-black uppercase tracking-widest text-white shadow-[4px_4px_0_#171717] hover:bg-red-800 transition disabled:opacity-60"
             >
               {newsLoading
-                ? "Saving…"
+                ? "Saving..."
                 : editingId
                   ? "Update Article"
-                  : "Publish Article"}
+                  : "Publish Story"}
             </button>
           </form>
           {alert(newsMsg)}

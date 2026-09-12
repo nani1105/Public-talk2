@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useEffect } from "react";
+import { Document, Page } from "react-pdf";
 
 type PageThumbnailStripProps = {
   url: string;
@@ -10,6 +11,7 @@ type PageThumbnailStripProps = {
 };
 
 export default function PageThumbnailStrip({
+  url,
   numPages,
   currentPage,
   onSelectPage,
@@ -46,38 +48,51 @@ export default function PageThumbnailStrip({
         </span>
       </div>
 
-      <div
-        ref={containerRef}
-        className="flex md:flex-col items-center gap-2.5 overflow-x-auto md:overflow-y-auto max-h-[350px] md:max-h-[700px] p-1 scrollbar-thin scrollbar-thumb-neutral-400"
-        style={{ scrollBehavior: "smooth" }}
-      >
-        {Array.from({ length: numPages }, (_, index) => {
-          const pageNum = index + 1;
-          const isActive = pageNum === currentPage;
+      <Document file={url} loading={null} error={null}>
+        <div
+          ref={containerRef}
+          className="flex md:flex-col items-center gap-3 overflow-x-auto md:overflow-y-auto max-h-[350px] md:max-h-[750px] p-1 scrollbar-thin scrollbar-thumb-neutral-400"
+          style={{ scrollBehavior: "smooth" }}
+        >
+          {Array.from({ length: numPages }, (_, index) => {
+            const pageNum = index + 1;
+            const isActive = pageNum === currentPage;
 
-          return (
-            <button
-              key={`thumb_${pageNum}`}
-              ref={isActive ? activeThumbnailRef : null}
-              type="button"
-              onClick={() => onSelectPage(pageNum)}
-              className={`group relative flex items-center justify-between w-full shrink-0 border-2 transition-all p-2.5 bg-[#f7f4ed] ${
-                isActive
-                  ? "border-red-800 bg-red-800 text-white shadow-[3px_3px_0_#171717]"
-                  : "border-neutral-950 text-neutral-950 hover:bg-neutral-950 hover:text-white hover:shadow-[3px_3px_0_#171717]"
-              }`}
-            >
-              <div className="flex items-center gap-2 font-mono text-xs font-black">
-                <span className={`h-2.5 w-2.5 rounded-full ${isActive ? "bg-white" : "bg-red-800"}`} />
-                <span>PAGE {String(pageNum).padStart(2, "0")}</span>
-              </div>
-              <span className="text-[10px] font-bold uppercase tracking-wider opacity-80">
-                {isActive ? "ACTIVE" : "VIEW →"}
-              </span>
-            </button>
-          );
-        })}
-      </div>
+            return (
+              <button
+                key={`thumb_${pageNum}`}
+                ref={isActive ? activeThumbnailRef : null}
+                type="button"
+                onClick={() => onSelectPage(pageNum)}
+                className={`group relative flex md:flex-row flex-col items-center justify-between w-full shrink-0 border-2 transition-all p-2 bg-[#f7f4ed] ${
+                  isActive
+                    ? "border-red-800 ring-2 ring-red-800 scale-[1.02] shadow-[3px_3px_0_#991b1b]"
+                    : "border-neutral-950 hover:border-neutral-700 hover:shadow-[3px_3px_0_#171717]"
+                }`}
+              >
+                {/* Visual Miniature PDF Page Render */}
+                <div className="h-28 w-20 overflow-hidden bg-white border border-neutral-300 shrink-0 flex items-center justify-center">
+                  <Page
+                    pageNumber={pageNum}
+                    width={75}
+                    renderTextLayer={false}
+                    renderAnnotationLayer={false}
+                  />
+                </div>
+
+                {/* Page Number Label */}
+                <div
+                  className={`mt-1 md:mt-0 w-full md:w-auto px-2.5 py-1 text-center font-mono text-[11px] font-black uppercase ${
+                    isActive ? "bg-red-800 text-white" : "bg-neutral-950 text-white group-hover:bg-neutral-800"
+                  }`}
+                >
+                  Pg {String(pageNum).padStart(2, "0")}
+                </div>
+              </button>
+            );
+          })}
+        </div>
+      </Document>
     </div>
   );
 }

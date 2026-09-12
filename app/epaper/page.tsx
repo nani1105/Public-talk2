@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getLatestNews } from "@/lib/news";
+import BreakingTicker from "@/app/components/BreakingTicker";
 import EpaperViewer from "@/app/components/EpaperViewer";
 import MoreNews from "@/app/components/MoreNews";
 import Footer from "@/app/components/Footer";
@@ -25,6 +26,9 @@ export default async function EpaperPage() {
 
   return (
     <main className="min-h-screen bg-[#f7f4ed] text-neutral-950">
+      {/* SLIDING BREAKING NEWS TICKER */}
+      <BreakingTicker articles={articles} />
+
       {/* EPAPER HEADER */}
       <header className="border-b-4 border-neutral-950 bg-[#fbfaf6]">
         <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 md:px-8">

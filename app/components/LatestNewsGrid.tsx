@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import type { NewsArticle } from "@/types/news";
 
 type LatestNewsGridProps = {
@@ -43,13 +44,12 @@ export default function LatestNewsGrid({
         </div>
 
         {selectedCategory && (
-          <button
-            type="button"
-            onClick={() => onSelectCategory?.(null)}
+          <Link
+            href="/"
             className="border-2 border-neutral-950 bg-white px-3 py-1 text-xs font-bold uppercase tracking-wider text-neutral-900 hover:bg-neutral-100 shadow-[2px_2px_0_#171717]"
           >
             Show All News ✕
-          </button>
+          </Link>
         )}
       </div>
 
@@ -68,20 +68,20 @@ export default function LatestNewsGrid({
           {filtered.map((article) => (
             <article
               key={article.id}
-              className="flex flex-col justify-between border-2 border-neutral-950 bg-white p-4 shadow-[4px_4px_0_#171717] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#171717]"
+              className="group flex flex-col justify-between border-2 border-neutral-950 bg-white p-4 shadow-[4px_4px_0_#171717] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#171717]"
             >
               <div className="space-y-3">
                 {article.image_url ? (
-                  <div className="relative h-40 w-full overflow-hidden border border-neutral-900 bg-neutral-100">
+                  <Link href={`/article/${article.id}`} className="block relative h-40 w-full overflow-hidden border border-neutral-900 bg-neutral-100">
                     <Image
                       src={article.image_url}
                       alt={article.title}
                       width={640}
                       height={360}
                       unoptimized
-                      className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
-                  </div>
+                  </Link>
                 ) : (
                   <div className="flex h-32 w-full items-center justify-center border border-dashed border-neutral-300 bg-neutral-50 text-xs font-bold text-neutral-400">
                     Public Talk Archive Image
@@ -95,9 +95,11 @@ export default function LatestNewsGrid({
                   <time className="text-neutral-500">{formatDate(article.published_at)}</time>
                 </div>
 
-                <h3 className="font-serif text-xl font-black leading-tight text-neutral-950 hover:text-red-900">
-                  {article.title}
-                </h3>
+                <Link href={`/article/${article.id}`} className="block">
+                  <h3 className="font-serif text-xl font-black leading-tight text-neutral-950 group-hover:text-red-900 transition">
+                    {article.title}
+                  </h3>
+                </Link>
 
                 <p className="text-xs leading-relaxed text-neutral-700 line-clamp-3">
                   {article.snippet || article.body}
@@ -106,7 +108,9 @@ export default function LatestNewsGrid({
 
               <div className="mt-4 border-t border-neutral-200 pt-3 flex justify-between items-center text-xs font-bold text-neutral-900">
                 <span>PUBLIC TALK REPORT</span>
-                <span className="text-red-800 group-hover:underline">Read Story →</span>
+                <Link href={`/article/${article.id}`} className="text-red-800 group-hover:underline">
+                  Read Story →
+                </Link>
               </div>
             </article>
           ))}

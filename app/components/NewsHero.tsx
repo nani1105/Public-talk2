@@ -1,6 +1,7 @@
 "use client";
 
 import Image from "next/image";
+import Link from "next/link";
 import type { NewsArticle } from "@/types/news";
 
 type NewsHeroProps = {
@@ -59,28 +60,38 @@ export default function NewsHero({ article }: NewsHeroProps) {
       {/* Hero Content */}
       <div className="grid gap-6 lg:grid-cols-[1.2fr_1fr] items-start">
         <div className="space-y-4">
-          <h2 className="font-serif text-3xl font-black leading-tight text-neutral-950 md:text-4xl lg:text-5xl hover:text-red-900 transition">
-            {article.title}
-          </h2>
+          <Link href={`/article/${article.id}`} className="group block">
+            <h2 className="font-serif text-3xl font-black leading-tight text-neutral-950 md:text-4xl lg:text-5xl group-hover:text-red-900 transition">
+              {article.title}
+            </h2>
+          </Link>
           <p className="font-serif text-base leading-relaxed text-neutral-800 md:text-lg">
             {article.snippet || article.body.slice(0, 240) + "..."}
           </p>
-          <div className="pt-2 border-t border-neutral-200 text-xs font-bold uppercase tracking-widest text-neutral-500">
-            By Public Talk Editorial Desk
+          <div className="pt-3 border-t border-neutral-200 flex items-center justify-between">
+            <span className="text-xs font-bold uppercase tracking-widest text-neutral-500">
+              By Public Talk Editorial Desk
+            </span>
+            <Link
+              href={`/article/${article.id}`}
+              className="inline-flex items-center gap-1 border-2 border-neutral-950 bg-neutral-950 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-white hover:bg-red-800 transition shadow-[2px_2px_0_#171717]"
+            >
+              Read Full Story →
+            </Link>
           </div>
         </div>
 
         {article.image_url ? (
-          <div className="relative border-2 border-neutral-950 overflow-hidden shadow-[4px_4px_0_#171717]">
+          <Link href={`/article/${article.id}`} className="block relative border-2 border-neutral-950 overflow-hidden shadow-[4px_4px_0_#171717] group">
             <Image
               src={article.image_url}
               alt={article.title}
               width={800}
               height={500}
               unoptimized
-              className="h-64 w-full object-cover md:h-80 transition-transform duration-500 hover:scale-105"
+              className="h-64 w-full object-cover md:h-80 transition-transform duration-500 group-hover:scale-105"
             />
-          </div>
+          </Link>
         ) : (
           <div className="flex h-64 md:h-80 w-full items-center justify-center border-2 border-dashed border-neutral-400 bg-[#f7f4ed] p-6 text-center text-sm font-bold text-neutral-500">
             [ Editorial Archive Image ]

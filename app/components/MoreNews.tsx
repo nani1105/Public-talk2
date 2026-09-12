@@ -45,9 +45,10 @@ export default function MoreNews({ articles }: MoreNewsProps) {
       ) : (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {articles.slice(0, 6).map((article) => (
-            <article
+            <Link
               key={article.id}
-              className="flex flex-col justify-between border-2 border-neutral-950 bg-white p-4 shadow-[4px_4px_0_#171717] hover:-translate-y-1 transition duration-200"
+              href={`/article/${article.id}`}
+              className="group flex flex-col justify-between border-2 border-neutral-950 bg-white p-4 shadow-[4px_4px_0_#171717] hover:-translate-y-1 transition duration-200"
             >
               <div className="space-y-3">
                 {article.image_url ? (
@@ -58,7 +59,7 @@ export default function MoreNews({ articles }: MoreNewsProps) {
                       width={400}
                       height={250}
                       unoptimized
-                      className="h-full w-full object-cover"
+                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
                   </div>
                 ) : (
@@ -74,15 +75,16 @@ export default function MoreNews({ articles }: MoreNewsProps) {
                   <time className="text-neutral-500">{formatDate(article.published_at)}</time>
                 </div>
 
-                <h3 className="font-serif text-lg font-black leading-snug text-neutral-950">
+                <h3 className="font-serif text-lg font-black leading-snug text-neutral-950 group-hover:text-red-900 transition">
                   {article.title}
                 </h3>
               </div>
 
-              <div className="mt-4 pt-3 border-t border-neutral-200 text-xs font-bold text-red-900">
-                Read Article →
+              <div className="mt-4 pt-3 border-t border-neutral-200 text-xs font-bold text-red-900 flex items-center justify-between">
+                <span>FULL STORY</span>
+                <span>Read Article →</span>
               </div>
-            </article>
+            </Link>
           ))}
         </div>
       )}
