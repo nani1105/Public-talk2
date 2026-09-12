@@ -1,6 +1,12 @@
 "use client";
 
 import Link from "next/link";
+import { Document, Page, pdfjs } from "react-pdf";
+
+// Configure worker URL using local worker file
+if (typeof window !== "undefined") {
+  pdfjs.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
+}
 
 type EpaperPreviewCardProps = {
   epaperUrl: string;
@@ -12,63 +18,64 @@ export default function EpaperPreviewCard({ epaperUrl }: EpaperPreviewCardProps)
   }).format(new Date());
 
   return (
-    <div className="border-4 border-neutral-950 bg-white p-5 shadow-[10px_10px_0_#171717] md:p-7 space-y-6">
+    <div className="border-4 border-neutral-950 bg-white p-4 shadow-[8px_8px_0_#171717] space-y-4">
       {/* Header Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-b-4 border-neutral-950 pb-4">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b-2 border-neutral-950 pb-3">
         <div>
-          <div className="flex items-center gap-2">
-            <span className="bg-red-800 px-2 py-0.5 text-xs font-black uppercase tracking-widest text-white">
+          <div className="flex items-center gap-1.5">
+            <span className="bg-red-800 px-2 py-0.5 text-[10px] font-black uppercase tracking-widest text-white">
               TODAY'S EDITION
             </span>
-            <span className="text-xs font-bold uppercase tracking-wider text-neutral-600">
-              Daily Newspaper
+            <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-600">
+              Print Replica
             </span>
           </div>
-          <h2 className="mt-1 font-serif text-3xl font-black text-neutral-950 md:text-4xl">
-            Public Talk Daily E-Paper
+          <h2 className="mt-1 font-serif text-2xl font-black text-neutral-950">
+            Public Talk E-Paper
           </h2>
-          <p className="mt-1 text-xs font-bold text-neutral-600 tracking-wide">
+          <p className="text-[11px] font-bold text-neutral-600">
             {currentDate}
           </p>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex flex-wrap gap-3">
-          <Link
-            href="/epaper"
-            className="inline-flex items-center justify-center border-2 border-neutral-950 bg-red-800 px-5 py-2.5 text-sm font-black uppercase tracking-wider text-white shadow-[4px_4px_0_#171717] transition hover:bg-neutral-950 hover:translate-x-0.5 hover:translate-y-0.5"
-          >
-            READ TODAY'S PAPER →
-          </Link>
-          <a
-            href={epaperUrl}
-            download="Public_Talk_Epaper.pdf"
-            className="inline-flex items-center justify-center border-2 border-neutral-950 bg-white px-4 py-2.5 text-sm font-black uppercase tracking-wider text-neutral-950 shadow-[4px_4px_0_#171717] transition hover:bg-neutral-100"
-          >
-            DOWNLOAD PDF ⤓
-          </a>
-        </div>
+        <Link
+          href="/epaper"
+          className="inline-flex items-center justify-center border-2 border-neutral-950 bg-red-800 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-white shadow-[2px_2px_0_#171717] hover:bg-neutral-950 transition"
+        >
+          Read E-Paper →
+        </Link>
       </div>
 
-      {/* Interactive E-Paper Showcase Banner */}
-      <div className="relative border-2 border-neutral-950 bg-[#f7f4ed] p-6 shadow-[6px_6px_0_#171717] text-center space-y-4">
-        <div className="mx-auto max-w-xl space-y-2">
-          <p className="font-serif text-xl font-bold text-neutral-900">
-            Read the full print edition page-by-page online.
-          </p>
-          <p className="text-xs text-neutral-600 leading-relaxed font-semibold">
-            Features high-resolution page rendering, responsive zooming, interactive thumbnail strip, and offline PDF archiving.
-          </p>
+      {/* Large Live Cover Preview Render inside Compact Container */}
+      <Link href="/epaper" className="group block relative border-2 border-neutral-950 bg-[#f7f4ed] p-3 shadow-[4px_4px_0_#171717]">
+        <div className="flex justify-center overflow-hidden bg-white border-2 border-neutral-950 shadow-md">
+          <Document file={epaperUrl} loading={<div className="p-8 text-xs font-bold text-neutral-500">Loading cover...</div>} error={null}>
+            <Page
+              pageNumber={1}
+              width={340}
+              renderTextLayer={false}
+              renderAnnotationLayer={false}
+              className="transition-transform duration-300 group-hover:scale-102"
+            />
+          </Document>
         </div>
 
-        <div className="pt-2">
-          <Link
-            href="/epaper"
-            className="inline-block border-2 border-neutral-950 bg-neutral-950 px-6 py-3 text-xs font-black uppercase tracking-[0.2em] text-white hover:bg-red-800 transition"
-          >
-            Open Interactive E-Paper Viewer →
-          </Link>
+        <div className="mt-3 flex items-center justify-between text-xs font-black text-neutral-950 border-t border-neutral-300 pt-2">
+          <span>PAGE 01 COVER PREVIEW</span>
+          <span className="text-red-800 group-hover:underline">OPEN READER →</span>
         </div>
+      </Link>
+
+      {/* Download Action */}
+      <div className="pt-1 flex justify-between items-center text-xs font-bold text-neutral-700">
+        <a
+          href={epaperUrl}
+          download="Public_Talk_Epaper.pdf"
+          className="text-neutral-950 underline hover:text-red-800"
+        >
+          Download PDF Edition ⤓
+        </a>
+        <span className="text-[10px] uppercase text-neutral-500 font-mono">High Resolution</span>
       </div>
     </div>
   );

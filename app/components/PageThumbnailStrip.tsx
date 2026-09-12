@@ -51,7 +51,7 @@ export default function PageThumbnailStrip({
       <Document file={url} loading={null} error={null}>
         <div
           ref={containerRef}
-          className="flex md:flex-col items-center gap-3 overflow-x-auto md:overflow-y-auto max-h-[350px] md:max-h-[750px] p-1 scrollbar-thin scrollbar-thumb-neutral-400"
+          className="flex md:flex-col items-center gap-3.5 overflow-x-auto md:overflow-y-auto max-h-[400px] md:max-h-[780px] p-1 scrollbar-thin scrollbar-thumb-neutral-400"
           style={{ scrollBehavior: "smooth" }}
         >
           {Array.from({ length: numPages }, (_, index) => {
@@ -70,11 +70,11 @@ export default function PageThumbnailStrip({
                     : "border-neutral-950 hover:border-neutral-700 hover:shadow-[3px_3px_0_#171717]"
                 }`}
               >
-                {/* Visual Miniature PDF Page Render */}
-                <div className="h-28 w-20 overflow-hidden bg-white border border-neutral-300 shrink-0 flex items-center justify-center">
+                {/* Visual Miniature PDF Page Render (Enlarged) */}
+                <div className="h-36 w-24 overflow-hidden bg-white border-2 border-neutral-950 shrink-0 flex items-center justify-center shadow-[2px_2px_0_#171717]">
                   <Page
                     pageNumber={pageNum}
-                    width={75}
+                    width={100}
                     renderTextLayer={false}
                     renderAnnotationLayer={false}
                   />
@@ -82,7 +82,7 @@ export default function PageThumbnailStrip({
 
                 {/* Page Number Label */}
                 <div
-                  className={`mt-1 md:mt-0 w-full md:w-auto px-2.5 py-1 text-center font-mono text-[11px] font-black uppercase ${
+                  className={`mt-1 md:mt-0 w-full md:w-auto px-3 py-1.5 text-center font-mono text-[11px] font-black uppercase ${
                     isActive ? "bg-red-800 text-white" : "bg-neutral-950 text-white group-hover:bg-neutral-800"
                   }`}
                 >

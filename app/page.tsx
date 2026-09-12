@@ -5,7 +5,6 @@ import Footer from "@/app/components/Footer";
 import { getLatestNews } from "@/lib/news";
 
 export const revalidate = 0;
-export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Public Talk | Independent News Agency",

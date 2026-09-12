@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
-import { NEWS_CATEGORIES, type NewsCategory } from "@/types/news";
+import { NEWS_CATEGORIES, type NewsCategory, type NewsArticle } from "@/types/news";
 import { env } from "@/lib/env";
 import { createServiceClient, getPublicFileUrl } from "@/lib/supabase";
-import { getLatestNews } from "@/lib/news";
+import { getLatestNews, getLocalArticles, saveLocalArticles, saveUploadedImage } from "@/lib/news";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -19,7 +19,7 @@ const getExtension = (filename: string) => {
 
 const getCoverImage = (formData: FormData) => {
   const image = formData.get("image") ?? formData.get("coverImage");
-  return image instanceof File ? image : null;
+  return image instanceof File && image.size > 0 ? image : null;
 };
 
 export async function GET() {
@@ -52,42 +52,68 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Cover file must be an image." }, { status: 400 });
     }
 
-    const supabase = createServiceClient();
-    const imagePath = `${Date.now()}-${crypto.randomUUID()}${getExtension(image.name)}`;
-    const { error: uploadError } = await supabase.storage
-      .from(env.newsImageBucket())
-      .upload(imagePath, image, {
-        contentType: image.type,
-        upsert: false,
-        cacheControl: "31536000"
-      });
+    const url = env.supabaseUrl();
+    const isRealSupabase = Boolean(url && !url.includes("example.supabase.co") && !url.includes("dummy"));
 
-    if (uploadError) {
-      console.warn("[admin/news] Supabase upload failed, publishing with local image placeholder:", uploadError.message);
+    let article: NewsArticle | null = null;
+
+    if (isRealSupabase) {
+      try {
+        const supabase = createServiceClient();
+        const imagePath = `${Date.now()}-${crypto.randomUUID()}${getExtension(image.name)}`;
+        const { error: uploadError } = await supabase.storage
+          .from(env.newsImageBucket())
+          .upload(imagePath, image, {
+            contentType: image.type,
+            upsert: false,
+            cacheControl: "31536000"
+          });
+
+        if (!uploadError) {
+          const imageUrl = getPublicFileUrl(env.newsImageBucket(), imagePath);
+          const { data, error: insertError } = await supabase
+            .from("news")
+            .insert({
+              title,
+              category,
+              body,
+              snippet: makeSnippet(body),
+              image_url: imageUrl,
+              image_path: imagePath
+            })
+            .select("*")
+            .single();
+
+          if (!insertError && data) {
+            article = data;
+          }
+        }
+      } catch (err) {
+        console.warn("[POST news] Supabase publish error:", err);
+      }
     }
 
-    const imageUrl = uploadError
-      ? "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80"
-      : getPublicFileUrl(env.newsImageBucket(), imagePath);
+    if (!article) {
+      // Save uploaded cover image file locally to public/uploads/
+      const localImageUrl = await saveUploadedImage(image);
 
-    const { data, error: insertError } = await supabase
-      .from("news")
-      .insert({
+      const newArticle: NewsArticle = {
+        id: `post-${Date.now()}`,
         title,
         category,
         body,
         snippet: makeSnippet(body),
-        image_url: imageUrl,
-        image_path: imagePath
-      })
-      .select("*")
-      .single();
+        image_url: localImageUrl,
+        image_path: "",
+        published_at: new Date().toISOString(),
+      };
 
-    if (insertError) {
-      console.warn("[admin/news] Supabase insert failed:", insertError.message);
+      const existingLocal = await getLocalArticles();
+      await saveLocalArticles([newArticle, ...existingLocal]);
+      article = newArticle;
     }
 
-    return NextResponse.json({ article: data || { id: `local-${Date.now()}`, title, category, body, snippet: makeSnippet(body), image_url: imageUrl } }, { status: 201 });
+    return NextResponse.json({ article }, { status: 201 });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Unable to publish article." }, { status: 500 });

@@ -8,7 +8,6 @@ import Footer from "@/app/components/Footer";
 import { getLatestNews } from "@/lib/news";
 
 export const revalidate = 0;
-export const dynamic = "force-dynamic";
 
 type ArticlePageProps = {
   params: Promise<{ id: string }>;
@@ -112,16 +111,14 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
           </div>
         )}
 
-        {/* Story Body Paragraphs */}
+        {/* Story Body Paragraphs with whitespace-pre-line to preserve all line breaks & paragraphs */}
         <div className="border-4 border-neutral-950 bg-white p-6 shadow-[10px_10px_0_#171717] md:p-10 space-y-6">
           <p className="font-serif text-xl font-bold leading-relaxed text-neutral-900 border-l-4 border-red-800 pl-4 italic">
             "{article.snippet || article.body.slice(0, 180)}"
           </p>
 
-          <div className="space-y-4 font-serif text-lg leading-relaxed text-neutral-800">
-            {article.body.split("\n\n").map((paragraph, idx) => (
-              <p key={idx}>{paragraph}</p>
-            ))}
+          <div className="font-serif text-lg leading-relaxed text-neutral-800 whitespace-pre-line space-y-4">
+            {article.body}
           </div>
 
           <div className="pt-6 border-t-2 border-neutral-200 flex flex-wrap items-center justify-between gap-4 text-xs font-bold uppercase tracking-wider text-neutral-600">

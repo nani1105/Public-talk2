@@ -67,10 +67,55 @@ const DUMMY_ARTICLES: NewsArticle[] = [
   },
 ];
 
+export const saveUploadedImage = async (file: File): Promise<string> => {
+  try {
+    const uploadsDir = path.join(process.cwd(), "public", "uploads");
+    if (!fs.existsSync(uploadsDir)) {
+      await fs.promises.mkdir(uploadsDir, { recursive: true });
+    }
+
+    const extension = file.name.split(".").pop()?.toLowerCase() || "jpg";
+    const filename = `${Date.now()}-${Math.random().toString(36).substring(2, 8)}.${extension}`;
+    const filePath = path.join(uploadsDir, filename);
+
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    await fs.promises.writeFile(filePath, buffer);
+
+    return `/uploads/${filename}`;
+  } catch (err) {
+    console.error("[saveUploadedImage] error:", err);
+    return "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80";
+  }
+};
+
+export const getLocalArticles = async (): Promise<NewsArticle[]> => {
+  try {
+    const filePath = path.join(process.cwd(), "public", "articles.json");
+    if (fs.existsSync(filePath)) {
+      const content = await fs.promises.readFile(filePath, "utf-8");
+      return JSON.parse(content);
+    }
+  } catch (err) {
+    console.error("[getLocalArticles] error:", err);
+  }
+  return [];
+};
+
+export const saveLocalArticles = async (articles: NewsArticle[]) => {
+  try {
+    const filePath = path.join(process.cwd(), "public", "articles.json");
+    await fs.promises.writeFile(filePath, JSON.stringify(articles, null, 2), "utf-8");
+  } catch (err) {
+    console.error("[saveLocalArticles] error:", err);
+  }
+};
+
 export const getLatestNews = async (): Promise<NewsArticle[]> => {
   const url = env.supabaseUrl();
   const isRealSupabase = Boolean(url && !url.includes("example.supabase.co") && !url.includes("dummy"));
 
+  let dbArticles: NewsArticle[] = [];
   if (isRealSupabase) {
     try {
       const supabase = createServiceClient();
@@ -80,14 +125,22 @@ export const getLatestNews = async (): Promise<NewsArticle[]> => {
         .order("published_at", { ascending: false });
 
       if (!error && data && data.length > 0) {
-        return data;
+        dbArticles = data;
       }
     } catch (err) {
       console.error("[getLatestNews] exception:", err);
     }
   }
 
-  // Fallback to rich dummy articles instantly if DB is unconfigured or empty
+  const localArticles = await getLocalArticles();
+  const allArticles = [...localArticles, ...dbArticles];
+
+  if (allArticles.length > 0) {
+    // Sort all articles by publication date descending
+    return allArticles.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime());
+  }
+
+  // Fallback to rich dummy articles if no published articles exist
   return DUMMY_ARTICLES;
 };
 

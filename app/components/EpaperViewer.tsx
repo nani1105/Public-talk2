@@ -21,24 +21,29 @@ type EpaperViewerProps = {
 export default function EpaperViewer({ url, showThumbnails = true }: EpaperViewerProps) {
   const [numPages, setNumPages] = useState<number | null>(null);
   const [pageNumber, setPageNumber] = useState<number>(1);
-  const [scale, setScale] = useState<number>(1.0);
-  const [baseWidth, setBaseWidth] = useState<number>(750);
+  const [scale, setScale] = useState<number>(1.1);
+  const [baseWidth, setBaseWidth] = useState<number>(950);
   const [isFullscreen, setIsFullscreen] = useState<boolean>(false);
   const [copiedShare, setCopiedShare] = useState<boolean>(false);
   const [loadError, setLoadError] = useState<boolean>(false);
   const [retryKey, setRetryKey] = useState<number>(0);
 
+  // Drag-to-pan & touch gesture state
+  const [panPosition, setPanPosition] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [dragStart, setDragStart] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+
   const viewerContainerRef = useRef<HTMLDivElement>(null);
 
-  // Responsive container width calculation
+  // Responsive container width calculation (larger ratio for newspaper readability)
   const updateBaseWidth = useCallback(() => {
     if (viewerContainerRef.current) {
       const containerW = viewerContainerRef.current.clientWidth;
-      const availableW = Math.max(280, containerW - 350);
-      setBaseWidth(Math.min(availableW, 850));
+      const availableW = Math.max(300, containerW - 320);
+      setBaseWidth(Math.min(availableW, 1100));
     } else {
       const screenW = window.innerWidth;
-      setBaseWidth(Math.min(screenW - 350, 850));
+      setBaseWidth(Math.min(screenW - 320, 1100));
     }
   }, []);
 
@@ -54,18 +59,71 @@ export default function EpaperViewer({ url, showThumbnails = true }: EpaperViewe
       const newPage = prev + offset;
       return numPages ? Math.min(Math.max(newPage, 1), numPages) : prev;
     });
+    setPanPosition({ x: 0, y: 0 });
   };
 
   const goToPage = (page: number) => {
     if (numPages && page >= 1 && page <= numPages) {
       setPageNumber(page);
+      setPanPosition({ x: 0, y: 0 });
     }
   };
 
   // Zoom controls
-  const handleZoomIn = () => setScale((s) => Math.min(Number((s + 0.2).toFixed(1)), 2.5));
+  const handleZoomIn = () => setScale((s) => Math.min(Number((s + 0.2).toFixed(1)), 3.0));
   const handleZoomOut = () => setScale((s) => Math.max(Number((s - 0.2).toFixed(1)), 0.6));
-  const handleResetZoom = () => setScale(1.0);
+  const handleResetZoom = () => {
+    setScale(1.1);
+    setPanPosition({ x: 0, y: 0 });
+  };
+
+  // Mouse Drag Handlers
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return; // Left click only
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - panPosition.x, y: e.clientY - panPosition.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setPanPosition({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y,
+    });
+  };
+
+  const handleMouseUp = () => setIsDragging(false);
+
+  // Touch Gesture Handlers for Mobile
+  const handleTouchStart = (e: React.TouchEvent) => {
+    if (e.touches.length === 1) {
+      setIsDragging(true);
+      setDragStart({
+        x: e.touches[0].clientX - panPosition.x,
+        y: e.touches[0].clientY - panPosition.y,
+      });
+    }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+    if (isDragging && e.touches.length === 1) {
+      setPanPosition({
+        x: e.touches[0].clientX - dragStart.x,
+        y: e.touches[0].clientY - dragStart.y,
+      });
+    }
+  };
+
+  const handleTouchEnd = () => setIsDragging(false);
+
+  // Wheel Zoom Listener
+  const handleWheel = (e: React.WheelEvent) => {
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      if (e.deltaY < 0) handleZoomIn();
+      else handleZoomOut();
+    }
+  };
 
   // Fullscreen toggle
   const toggleFullscreen = () => {
@@ -175,14 +233,14 @@ export default function EpaperViewer({ url, showThumbnails = true }: EpaperViewe
               type="button"
               onClick={handleResetZoom}
               className="px-2 py-1 font-mono hover:underline"
-              title="Reset Zoom to 100%"
+              title="Reset Zoom & Pan"
             >
               {Math.round(scale * 100)}%
             </button>
             <button
               type="button"
               onClick={handleZoomIn}
-              disabled={scale >= 2.5}
+              disabled={scale >= 3.0}
               className="border border-neutral-300 bg-neutral-100 px-2 py-1 hover:bg-neutral-200 disabled:opacity-30"
               title="Zoom In"
             >
@@ -229,8 +287,20 @@ export default function EpaperViewer({ url, showThumbnails = true }: EpaperViewe
 
       {/* 2-COLUMN READER CONTAINER: MAIN VIEWER ON LEFT, PAGE SLIDER PANEL ON RIGHT */}
       <div className="w-full flex flex-col md:flex-row gap-4 items-start">
-        {/* PDF DOCUMENT DISPLAY AREA */}
-        <div className="flex-1 w-full flex justify-center overflow-x-auto min-h-[500px] border-4 border-neutral-950 bg-white p-4 shadow-[8px_8px_0_#171717]">
+        {/* PDF DOCUMENT DISPLAY AREA WITH MOUSE DRAG & TOUCH PAN GESTURES */}
+        <div
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          onWheel={handleWheel}
+          className={`flex-1 w-full flex justify-center items-start overflow-hidden min-h-[600px] border-4 border-neutral-950 bg-[#e8e3d8] p-4 shadow-[8px_8px_0_#171717] select-none ${
+            isDragging ? "cursor-grabbing" : "cursor-grab"
+          }`}
+        >
           <Document
             key={`pdf_doc_${retryKey}`}
             file={url}
@@ -273,14 +343,21 @@ export default function EpaperViewer({ url, showThumbnails = true }: EpaperViewe
             }
           >
             {!loadError && (
-              <Page
-                key={`page_${pageNumber}_scale_${scale}`}
-                pageNumber={pageNumber}
-                width={computedWidth}
-                renderTextLayer={false}
-                renderAnnotationLayer={false}
-                className="shadow-2xl border border-neutral-300"
-              />
+              <div
+                style={{
+                  transform: `translate(${panPosition.x}px, ${panPosition.y}px)`,
+                  transition: isDragging ? "none" : "transform 0.15s ease-out",
+                }}
+              >
+                <Page
+                  key={`page_${pageNumber}_scale_${scale}`}
+                  pageNumber={pageNumber}
+                  width={computedWidth}
+                  renderTextLayer={false}
+                  renderAnnotationLayer={false}
+                  className="shadow-2xl border-2 border-neutral-950"
+                />
+              </div>
             )}
           </Document>
         </div>

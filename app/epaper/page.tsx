@@ -6,7 +6,6 @@ import MoreNews from "@/app/components/MoreNews";
 import Footer from "@/app/components/Footer";
 
 export const revalidate = 0;
-export const dynamic = "force-dynamic";
 
 export const metadata = {
   title: "Public Talk Daily E-Paper | Today's Edition",

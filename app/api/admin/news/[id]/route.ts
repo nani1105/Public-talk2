@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
-import { NEWS_CATEGORIES, type NewsCategory } from "@/types/news";
+import { NEWS_CATEGORIES, type NewsCategory, type NewsArticle } from "@/types/news";
 import { env } from "@/lib/env";
 import { createServiceClient, getPublicFileUrl } from "@/lib/supabase";
+import { getLocalArticles, saveLocalArticles, saveUploadedImage } from "@/lib/news";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -24,7 +25,7 @@ const getExtension = (filename: string) => {
 
 const getCoverImage = (formData: FormData) => {
   const image = formData.get("image") ?? formData.get("coverImage");
-  return image instanceof File ? image : null;
+  return image instanceof File && image.size > 0 ? image : null;
 };
 
 export async function PUT(request: Request, context: RouteContext) {
@@ -45,60 +46,99 @@ export async function PUT(request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Title, category, and body are required." }, { status: 400 });
     }
 
-    const supabase = createServiceClient();
-    const { data: existingArticle, error: findError } = await supabase
-      .from("news")
-      .select("image_path, image_url")
-      .eq("id", id)
-      .single();
+    const url = env.supabaseUrl();
+    const isRealSupabase = Boolean(url && !url.includes("example.supabase.co") && !url.includes("dummy"));
+    let updatedArticle: NewsArticle | null = null;
 
-    if (findError) {
-      return NextResponse.json({ error: findError.message }, { status: 404 });
+    if (isRealSupabase) {
+      try {
+        const supabase = createServiceClient();
+        const { data: existingArticle } = await supabase
+          .from("news")
+          .select("image_path, image_url")
+          .eq("id", id)
+          .single();
+
+        let imagePath = existingArticle?.image_path ?? "";
+        let imageUrl = existingArticle?.image_url ?? "";
+
+        if (image) {
+          imagePath = `${Date.now()}-${crypto.randomUUID()}${getExtension(image.name)}`;
+          const { error: uploadError } = await supabase.storage
+            .from(env.newsImageBucket())
+            .upload(imagePath, image, {
+              contentType: image.type,
+              upsert: false,
+              cacheControl: "31536000"
+            });
+
+          if (!uploadError) {
+            imageUrl = getPublicFileUrl(env.newsImageBucket(), imagePath);
+          }
+        }
+
+        const { data } = await supabase
+          .from("news")
+          .update({
+            title,
+            category,
+            body,
+            snippet: makeSnippet(body),
+            image_url: imageUrl,
+            image_path: imagePath
+          })
+          .eq("id", id)
+          .select("*")
+          .single();
+
+        if (data) {
+          updatedArticle = data;
+        }
+      } catch (err) {
+        console.warn("[PUT news] Supabase update error:", err);
+      }
     }
 
-    let imagePath = existingArticle?.image_path ?? "";
-    let imageUrl = existingArticle?.image_url ?? "";
-
-    if (image) {
-      if (!image.type.startsWith("image/")) {
-        return NextResponse.json({ error: "Cover file must be an image." }, { status: 400 });
+    // Local fallback update
+    const localArticles = await getLocalArticles();
+    const idx = localArticles.findIndex((a) => a.id === id);
+    if (idx !== -1) {
+      let imageUrl = localArticles[idx].image_url;
+      if (image) {
+        imageUrl = await saveUploadedImage(image);
       }
 
-      imagePath = `${Date.now()}-${crypto.randomUUID()}${getExtension(image.name)}`;
-      const { error: uploadError } = await supabase.storage
-        .from(env.newsImageBucket())
-        .upload(imagePath, image, {
-          contentType: image.type,
-          upsert: false,
-          cacheControl: "31536000"
-        });
-
-      if (uploadError) {
-        return NextResponse.json({ error: uploadError.message }, { status: 500 });
-      }
-
-      imageUrl = getPublicFileUrl(env.newsImageBucket(), imagePath);
-    }
-
-    const { data, error: updateError } = await supabase
-      .from("news")
-      .update({
+      localArticles[idx] = {
+        ...localArticles[idx],
         title,
         category,
         body,
         snippet: makeSnippet(body),
         image_url: imageUrl,
-        image_path: imagePath
-      })
-      .eq("id", id)
-      .select("*")
-      .single();
-
-    if (updateError) {
-      return NextResponse.json({ error: updateError.message }, { status: 500 });
+      };
+      await saveLocalArticles(localArticles);
+      updatedArticle = localArticles[idx];
     }
 
-    return NextResponse.json({ article: data });
+    if (!updatedArticle) {
+      let imageUrl = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80";
+      if (image) {
+        imageUrl = await saveUploadedImage(image);
+      }
+
+      updatedArticle = {
+        id,
+        title,
+        category,
+        body,
+        snippet: makeSnippet(body),
+        image_url: imageUrl,
+        image_path: "",
+        published_at: new Date().toISOString(),
+      };
+    }
+
+    return NextResponse.json({ article: updatedArticle });
   } catch (error) {
     console.error(error);
     return NextResponse.json({ error: "Unable to update article." }, { status: 500 });
@@ -113,31 +153,23 @@ export async function DELETE(_request: Request, context: RouteContext) {
       return NextResponse.json({ error: "Article id is required." }, { status: 400 });
     }
 
-    const supabase = createServiceClient();
-    const { data: article, error: findError } = await supabase
-      .from("news")
-      .select("image_path")
-      .eq("id", id)
-      .single();
+    const url = env.supabaseUrl();
+    const isRealSupabase = Boolean(url && !url.includes("example.supabase.co") && !url.includes("dummy"));
 
-    if (findError) {
-      return NextResponse.json({ error: findError.message }, { status: 404 });
-    }
-
-    const { error: deleteError } = await supabase.from("news").delete().eq("id", id);
-
-    if (deleteError) {
-      return NextResponse.json({ error: deleteError.message }, { status: 500 });
-    }
-
-    if (article?.image_path) {
-      const { error: storageError } = await supabase.storage
-        .from(env.newsImageBucket())
-        .remove([article.image_path]);
-
-      if (storageError) {
-        console.error(storageError);
+    if (isRealSupabase) {
+      try {
+        const supabase = createServiceClient();
+        await supabase.from("news").delete().eq("id", id);
+      } catch (err) {
+        console.warn("[DELETE news] Supabase delete error:", err);
       }
+    }
+
+    // Local fallback delete
+    const localArticles = await getLocalArticles();
+    const filtered = localArticles.filter((a) => a.id !== id);
+    if (filtered.length !== localArticles.length) {
+      await saveLocalArticles(filtered);
     }
 
     return NextResponse.json({ ok: true });
