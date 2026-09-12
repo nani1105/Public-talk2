@@ -122,6 +122,8 @@ export const getLatestNews = async (): Promise<NewsArticle[]> => {
   const url = env.supabaseUrl();
   const isRealSupabase = Boolean(url && !url.includes("example.supabase.co") && !url.includes("dummy"));
 
+  console.log("[getLatestNews] isRealSupabase:", isRealSupabase, "url:", url?.slice(0, 30));
+
   let dbArticles: NewsArticle[] = [];
   if (isRealSupabase) {
     try {
@@ -131,8 +133,13 @@ export const getLatestNews = async (): Promise<NewsArticle[]> => {
         .select("*")
         .order("published_at", { ascending: false });
 
-      if (!error && data && data.length > 0) {
+      if (error) {
+        console.error("[getLatestNews] Supabase error:", error.message, "code:", error.code, "details:", error.details);
+      } else if (data && data.length > 0) {
+        console.log("[getLatestNews] Loaded", data.length, "articles from Supabase");
         dbArticles = data;
+      } else {
+        console.log("[getLatestNews] Supabase returned 0 articles");
       }
     } catch (err) {
       console.error("[getLatestNews] exception:", err);
@@ -143,7 +150,6 @@ export const getLatestNews = async (): Promise<NewsArticle[]> => {
   const allArticles = [...localArticles, ...dbArticles];
 
   if (allArticles.length > 0) {
-    // Sort all articles by publication date descending
     return allArticles.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime());
   }
 

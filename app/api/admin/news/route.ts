@@ -27,7 +27,7 @@ export async function GET() {
     const articles = await getLatestNews();
     return NextResponse.json(articles);
   } catch (error) {
-    console.error(error);
+    console.error("[GET news]", error);
     return NextResponse.json({ error: "Unable to load articles." }, { status: 500 });
   }
 }
@@ -55,22 +55,35 @@ export async function POST(request: Request) {
     const url = env.supabaseUrl();
     const isRealSupabase = Boolean(url && !url.includes("example.supabase.co") && !url.includes("dummy"));
 
+    console.log("[POST news] isRealSupabase:", isRealSupabase, "url:", url?.slice(0, 30));
+
     let article: NewsArticle | null = null;
+    let supabaseError: string | null = null;
 
     if (isRealSupabase) {
       try {
         const supabase = createServiceClient();
         const imagePath = `${Date.now()}-${crypto.randomUUID()}${getExtension(image.name)}`;
+
+        console.log("[POST news] Uploading image to bucket:", env.newsImageBucket(), "path:", imagePath);
+
+        // Convert File to ArrayBuffer for upload (more compatible on serverless)
+        const arrayBuffer = await image.arrayBuffer();
         const { error: uploadError } = await supabase.storage
           .from(env.newsImageBucket())
-          .upload(imagePath, image, {
-            contentType: image.type,
+          .upload(imagePath, arrayBuffer, {
+            contentType: image.type || "image/jpeg",
             upsert: false,
             cacheControl: "31536000"
           });
 
-        if (!uploadError) {
+        if (uploadError) {
+          supabaseError = `Storage upload failed: ${uploadError.message}`;
+          console.error("[POST news] Storage upload error:", uploadError);
+        } else {
           const imageUrl = getPublicFileUrl(env.newsImageBucket(), imagePath);
+          console.log("[POST news] Image uploaded, URL:", imageUrl?.slice(0, 60));
+
           const { data, error: insertError } = await supabase
             .from("news")
             .insert({
@@ -84,17 +97,31 @@ export async function POST(request: Request) {
             .select("*")
             .single();
 
-          if (!insertError && data) {
+          if (insertError) {
+            supabaseError = `DB insert failed: ${insertError.message} [code: ${insertError.code}]`;
+            console.error("[POST news] DB insert error:", insertError);
+          } else if (data) {
+            console.log("[POST news] Article saved to Supabase, id:", data.id);
             article = data;
           }
         }
       } catch (err) {
-        console.warn("[POST news] Supabase publish error:", err);
+        supabaseError = `Exception: ${err instanceof Error ? err.message : String(err)}`;
+        console.error("[POST news] Supabase exception:", err);
       }
     }
 
+    // If Supabase failed, return the specific error instead of silently falling back
+    // so admin knows exactly what went wrong
+    if (!article && isRealSupabase && supabaseError) {
+      return NextResponse.json(
+        { error: `Supabase error — ${supabaseError}. Check Vercel logs for details.` },
+        { status: 500 }
+      );
+    }
+
+    // Local fallback (only used when Supabase is not configured)
     if (!article) {
-      // Save uploaded cover image file locally to public/uploads/
       const localImageUrl = await saveUploadedImage(image);
 
       const newArticle: NewsArticle = {
@@ -115,7 +142,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ article }, { status: 201 });
   } catch (error) {
-    console.error(error);
+    console.error("[POST news] Unhandled error:", error);
     return NextResponse.json({ error: "Unable to publish article." }, { status: 500 });
   }
 }
