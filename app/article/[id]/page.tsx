@@ -1,4 +1,3 @@
-import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import Header from "@/app/components/Header";
@@ -96,13 +95,15 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
         {/* Hero Cover Image */}
         {article.image_url ? (
           <div className="relative border-4 border-neutral-950 bg-white shadow-[10px_10px_0_#171717] overflow-hidden">
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={article.image_url}
               alt={article.title}
-              width={1200}
-              height={675}
-              unoptimized
               className="h-80 w-full object-cover sm:h-96 md:h-[450px]"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = "https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80";
+              }}
             />
           </div>
         ) : (
@@ -156,13 +157,15 @@ export default async function ArticlePage({ params }: ArticlePageProps) {
                   <div className="space-y-3">
                     {rel.image_url ? (
                       <div className="h-32 w-full overflow-hidden border border-neutral-300">
-                        <Image
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img
                           src={rel.image_url}
                           alt={rel.title}
-                          width={400}
-                          height={225}
-                          unoptimized
                           className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80";
+                          }}
                         />
                       </div>
                     ) : null}

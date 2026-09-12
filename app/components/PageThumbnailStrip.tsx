@@ -33,17 +33,12 @@ export default function PageThumbnailStrip({
   if (!numPages || numPages <= 0) return null;
 
   return (
-    <div className="w-full md:w-64 lg:w-72 shrink-0 border-4 border-neutral-950 bg-white p-3 shadow-[6px_6px_0_#171717] flex flex-col justify-between">
-      <div className="mb-3 flex items-center justify-between border-b-2 border-neutral-950 pb-2">
-        <div className="flex items-center gap-1.5">
-          <span className="bg-red-800 px-2 py-0.5 text-[10px] font-black uppercase text-white">
-            PAGES
-          </span>
-          <span className="text-xs font-black text-neutral-950 uppercase tracking-wide">
-            Select Page
-          </span>
-        </div>
-        <span className="text-[11px] font-mono font-bold text-red-800">
+    <div className="hidden md:flex w-64 lg:w-72 shrink-0 flex-col justify-between p-2">
+      <div className="mb-3 flex items-center justify-between border-b border-neutral-300 pb-2 px-1">
+        <span className="text-[11px] font-black uppercase tracking-wider text-neutral-800">
+          Pages Preview
+        </span>
+        <span className="text-[10px] font-mono font-bold text-red-800">
           {currentPage} / {numPages}
         </span>
       </div>
@@ -51,7 +46,7 @@ export default function PageThumbnailStrip({
       <Document file={url} loading={null} error={null}>
         <div
           ref={containerRef}
-          className="flex md:flex-col items-center gap-3.5 overflow-x-auto md:overflow-y-auto max-h-[400px] md:max-h-[780px] p-1 scrollbar-thin scrollbar-thumb-neutral-400"
+          className="flex flex-col items-center gap-3 overflow-y-auto max-h-[780px] p-1 scrollbar-thin scrollbar-thumb-neutral-400"
           style={{ scrollBehavior: "smooth" }}
         >
           {Array.from({ length: numPages }, (_, index) => {
@@ -64,30 +59,34 @@ export default function PageThumbnailStrip({
                 ref={isActive ? activeThumbnailRef : null}
                 type="button"
                 onClick={() => onSelectPage(pageNum)}
-                className={`group relative flex md:flex-row flex-col items-center justify-between w-full shrink-0 border-2 transition-all p-2 bg-[#f7f4ed] ${
-                  isActive
-                    ? "border-red-800 ring-2 ring-red-800 scale-[1.02] shadow-[3px_3px_0_#991b1b]"
-                    : "border-neutral-950 hover:border-neutral-700 hover:shadow-[3px_3px_0_#171717]"
+                className={`group flex flex-col items-center cursor-pointer transition-all p-1 rounded ${
+                  isActive ? "scale-[1.03] opacity-100" : "opacity-80 hover:opacity-100"
                 }`}
               >
-                {/* Visual Miniature PDF Page Render (Enlarged) */}
-                <div className="h-36 w-24 overflow-hidden bg-white border-2 border-neutral-950 shrink-0 flex items-center justify-center shadow-[2px_2px_0_#171717]">
+                {/* Clean Miniature Page Render - Outer heavy rectangle removed */}
+                <div
+                  className={`overflow-hidden bg-white transition-all ${
+                    isActive
+                      ? "border-2 border-red-800 shadow-md ring-2 ring-red-800/30"
+                      : "border border-neutral-300 group-hover:border-neutral-700 shadow-sm"
+                  }`}
+                >
                   <Page
                     pageNumber={pageNum}
-                    width={100}
+                    width={110}
                     renderTextLayer={false}
                     renderAnnotationLayer={false}
                   />
                 </div>
 
-                {/* Page Number Label */}
-                <div
-                  className={`mt-1 md:mt-0 w-full md:w-auto px-3 py-1.5 text-center font-mono text-[11px] font-black uppercase ${
-                    isActive ? "bg-red-800 text-white" : "bg-neutral-950 text-white group-hover:bg-neutral-800"
+                {/* Page Number Label in Small Font */}
+                <span
+                  className={`mt-1 font-mono text-[10px] font-bold uppercase tracking-wider ${
+                    isActive ? "text-red-800 font-black" : "text-neutral-600 group-hover:text-neutral-900"
                   }`}
                 >
-                  Pg {String(pageNum).padStart(2, "0")}
-                </div>
+                  Page {pageNum}
+                </span>
               </button>
             );
           })}

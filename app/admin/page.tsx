@@ -6,6 +6,55 @@ import { NEWS_CATEGORIES, type NewsArticle } from "@/types/news";
 
 type Message = { type: "ok" | "err"; text: string } | null;
 
+async function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<File> {
+  if (!file.type.startsWith("image/")) return file;
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const img = document.createElement("img");
+      img.onload = () => {
+        let { width, height } = img;
+        if (width > maxWidth || height > maxWidth) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width);
+            width = maxWidth;
+          } else {
+            width = Math.round((width * maxWidth) / height);
+            height = maxWidth;
+          }
+        }
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) {
+              resolve(file);
+              return;
+            }
+            const compressedFile = new File([blob], file.name.replace(/\.[^/.]+$/, "") + ".jpg", {
+              type: "image/jpeg",
+            });
+            resolve(compressedFile);
+          },
+          "image/jpeg",
+          quality
+        );
+      };
+      img.onerror = () => resolve(file);
+      img.src = e.target?.result as string;
+    };
+    reader.onerror = () => resolve(file);
+    reader.readAsDataURL(file);
+  });
+}
+
 const emptyForm = {
   title: "",
   category: "Local" as NewsArticle["category"],
@@ -314,6 +363,10 @@ export default function AdminPage() {
                     src={article.image_url}
                     alt=""
                     className="h-16 w-20 shrink-0 border-2 border-neutral-950 object-cover shadow-[2px_2px_0_#171717]"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80";
+                    }}
                   />
                   <div className="min-w-0 flex-1 space-y-1">
                     <p className="font-serif text-lg font-black leading-snug text-neutral-950">
@@ -411,7 +464,15 @@ export default function AdminPage() {
                 <input
                   type="file"
                   accept="image/*"
-                  onChange={(e) => setCoverFile(e.target.files?.[0] ?? null)}
+                  onChange={async (e) => {
+                    const rawFile = e.target.files?.[0];
+                    if (rawFile) {
+                      const compressed = await compressImage(rawFile);
+                      setCoverFile(compressed);
+                    } else {
+                      setCoverFile(null);
+                    }
+                  }}
                   required={!editingId}
                   className="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10"
                 />

@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import type { NewsArticle } from "@/types/news";
 
@@ -24,7 +23,6 @@ const formatDate = (date: string) => {
 export default function LatestNewsGrid({
   articles,
   selectedCategory,
-  onSelectCategory,
 }: LatestNewsGridProps) {
   const filtered = selectedCategory
     ? articles.filter((a) => a.category.toLowerCase() === selectedCategory.toLowerCase())
@@ -73,13 +71,15 @@ export default function LatestNewsGrid({
               <div className="space-y-3">
                 {article.image_url ? (
                   <Link href={`/article/${article.id}`} className="block relative h-40 w-full overflow-hidden border border-neutral-900 bg-neutral-100">
-                    <Image
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
                       src={article.image_url}
                       alt={article.title}
-                      width={640}
-                      height={360}
-                      unoptimized
                       className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80";
+                      }}
                     />
                   </Link>
                 ) : (

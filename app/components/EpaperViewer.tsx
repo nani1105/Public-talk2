@@ -37,13 +37,17 @@ export default function EpaperViewer({ url, showThumbnails = true }: EpaperViewe
 
   // Responsive container width calculation (larger ratio for newspaper readability)
   const updateBaseWidth = useCallback(() => {
+    const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
+    const padding = isMobile ? 16 : 300;
+
     if (viewerContainerRef.current) {
       const containerW = viewerContainerRef.current.clientWidth;
-      const availableW = Math.max(300, containerW - 320);
+      const availableW = Math.max(280, containerW - padding);
       setBaseWidth(Math.min(availableW, 1100));
-    } else {
+    } else if (typeof window !== "undefined") {
       const screenW = window.innerWidth;
-      setBaseWidth(Math.min(screenW - 320, 1100));
+      const availableW = isMobile ? screenW - 24 : screenW - 300;
+      setBaseWidth(Math.min(availableW, 1100));
     }
   }, []);
 

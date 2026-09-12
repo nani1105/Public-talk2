@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import type { NewsArticle } from "@/types/news";
 
@@ -83,13 +82,15 @@ export default function NewsHero({ article }: NewsHeroProps) {
 
         {article.image_url ? (
           <Link href={`/article/${article.id}`} className="block relative border-2 border-neutral-950 overflow-hidden shadow-[4px_4px_0_#171717] group">
-            <Image
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
               src={article.image_url}
               alt={article.title}
-              width={800}
-              height={500}
-              unoptimized
               className="h-64 w-full object-cover md:h-80 transition-transform duration-500 group-hover:scale-105"
+              onError={(e) => {
+                e.currentTarget.onerror = null;
+                e.currentTarget.src = "https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80";
+              }}
             />
           </Link>
         ) : (
