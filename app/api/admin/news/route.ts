@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { NEWS_CATEGORIES, type NewsCategory, type NewsArticle } from "@/types/news";
 import { env } from "@/lib/env";
 import { createServiceClient, getPublicFileUrl } from "@/lib/supabase";
@@ -67,11 +68,11 @@ export async function POST(request: Request) {
 
         console.log("[POST news] Uploading image to bucket:", env.newsImageBucket(), "path:", imagePath);
 
-        // Convert File to ArrayBuffer for upload (more compatible on serverless)
         const arrayBuffer = await image.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
         const { error: uploadError } = await supabase.storage
           .from(env.newsImageBucket())
-          .upload(imagePath, arrayBuffer, {
+          .upload(imagePath, buffer, {
             contentType: image.type || "image/jpeg",
             upsert: false,
             cacheControl: "31536000"
@@ -112,7 +113,6 @@ export async function POST(request: Request) {
     }
 
     // If Supabase failed, return the specific error instead of silently falling back
-    // so admin knows exactly what went wrong
     if (!article && isRealSupabase && supabaseError) {
       return NextResponse.json(
         { error: `Supabase error — ${supabaseError}. Check Vercel logs for details.` },
@@ -138,6 +138,13 @@ export async function POST(request: Request) {
       const existingLocal = await getLocalArticles();
       await saveLocalArticles([newArticle, ...existingLocal]);
       article = newArticle;
+    }
+
+    try {
+      revalidatePath("/");
+      revalidatePath("/admin");
+    } catch {
+      // Ignore revalidate outside request context
     }
 
     return NextResponse.json({ article }, { status: 201 });

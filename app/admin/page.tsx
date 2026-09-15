@@ -6,6 +6,14 @@ import { NEWS_CATEGORIES, type NewsArticle } from "@/types/news";
 
 type Message = { type: "ok" | "err"; text: string } | null;
 
+type DbStatus = {
+  connected: boolean;
+  configured: boolean;
+  message: string;
+  supabaseUrl: string | null;
+  articleCount: number;
+};
+
 async function compressImage(file: File, maxWidth = 1200, quality = 0.8): Promise<File> {
   if (!file.type.startsWith("image/")) return file;
   return new Promise((resolve) => {
@@ -74,17 +82,27 @@ export default function AdminPage() {
   const [form, setForm] = useState(emptyForm);
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [epaperFile, setEpaperFile] = useState<File | null>(null);
+  const [dbStatus, setDbStatus] = useState<DbStatus | null>(null);
 
   const loadData = useCallback(async () => {
-    const [newsRes, epaperRes] = await Promise.all([
-      fetch("/api/admin/news"),
-      fetch("/api/admin/epaper"),
-    ]);
-    if (newsRes.ok) setArticles(await newsRes.json());
-    if (epaperRes.ok) {
-      const data = await epaperRes.json();
-      setEpaperUrl(data.url ?? null);
-      setEpaperViewerUrl(data.viewerUrl ?? "/api/epaper");
+    const t = Date.now();
+    try {
+      const [newsRes, epaperRes, statusRes] = await Promise.all([
+        fetch(`/api/admin/news?_t=${t}`),
+        fetch(`/api/admin/epaper?_t=${t}`),
+        fetch(`/api/admin/status?_t=${t}`),
+      ]);
+      if (newsRes.ok) setArticles(await newsRes.json());
+      if (epaperRes.ok) {
+        const data = await epaperRes.json();
+        setEpaperUrl(data.url ?? null);
+        setEpaperViewerUrl(data.viewerUrl ?? "/api/epaper");
+      }
+      if (statusRes.ok) {
+        setDbStatus(await statusRes.json());
+      }
+    } catch {
+      // Ignore background network errors
     }
   }, []);
 
@@ -194,6 +212,7 @@ export default function AdminPage() {
     if (coverFile) fd.set("coverImage", coverFile);
 
     const isEdit = Boolean(editingId);
+    const isDummyEdit = Boolean(editingId && editingId.startsWith("dummy-"));
     if (!isEdit && !coverFile) {
       setNewsMsg({ type: "err", text: "Cover image is required for new articles" });
       setNewsLoading(false);
@@ -212,12 +231,16 @@ export default function AdminPage() {
       }
       setNewsMsg({
         type: "ok",
-        text: isEdit ? "Article updated successfully" : "Article published successfully",
+        text: isEdit
+          ? isDummyEdit
+            ? "Sample article customized and published to live database!"
+            : "Article updated successfully"
+          : "Article published successfully",
       });
       resetForm();
       await loadData();
-    } catch {
-      setNewsMsg({ type: "err", text: "Network error" });
+    } catch (err) {
+      setNewsMsg({ type: "err", text: err instanceof Error ? err.message : "Network error" });
     } finally {
       setNewsLoading(false);
     }
@@ -241,11 +264,26 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen bg-[#f7f4ed] text-neutral-950">
       <header className="border-b-4 border-neutral-950 bg-[#fbfaf6]">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-6">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-6">
           <div>
-            <span className="bg-red-800 px-2 py-0.5 text-[10px] font-black uppercase text-white">
-              STAFF PORTAL
-            </span>
+            <div className="flex flex-wrap items-center gap-2 mb-1">
+              <span className="bg-red-800 px-2 py-0.5 text-[10px] font-black uppercase text-white">
+                STAFF PORTAL
+              </span>
+              {dbStatus && (
+                dbStatus.connected ? (
+                  <span className="inline-flex items-center gap-1.5 border border-emerald-800 bg-emerald-100 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-950">
+                    <span className="h-2 w-2 rounded-full bg-emerald-600 animate-pulse" />
+                    Supabase Connected ({dbStatus.articleCount} saved)
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 border border-red-800 bg-red-100 px-2 py-0.5 text-[10px] font-black uppercase text-red-950">
+                    <span className="h-2 w-2 rounded-full bg-red-600" />
+                    Supabase Disconnected
+                  </span>
+                )
+              )}
+            </div>
             <h1 className="font-serif text-3xl font-black md:text-4xl text-neutral-950">
               Public Talk Admin
             </h1>
@@ -268,6 +306,22 @@ export default function AdminPage() {
           </div>
         </div>
       </header>
+
+      {dbStatus && !dbStatus.connected && (
+        <div className="mx-auto max-w-6xl px-4 pt-6">
+          <div className="border-4 border-red-800 bg-red-50 p-4 text-red-950 shadow-[4px_4px_0_#991b1b]">
+            <p className="font-serif text-base font-black">
+              ⚠️ Database Connection Warning (Vercel)
+            </p>
+            <p className="mt-1 text-xs font-bold leading-relaxed">
+              {dbStatus.message}
+            </p>
+            <p className="mt-2 text-xs font-mono bg-white p-2 border border-red-300">
+              Check Vercel Dashboard → Project Settings → Environment Variables. Add <strong>NEXT_PUBLIC_SUPABASE_URL</strong> and <strong>SUPABASE_SERVICE_ROLE_KEY</strong>, then redeploy.
+            </p>
+          </div>
+        </div>
+      )}
 
       <main className="mx-auto max-w-6xl space-y-8 px-4 py-8">
         {/* DAILY E-PAPER SECTION */}
@@ -356,49 +410,61 @@ export default function AdminPage() {
             <p className="mt-4 text-sm font-bold text-neutral-600">No articles published yet.</p>
           ) : (
             <ul className="mt-4 divide-y-2 divide-neutral-200">
-              {articles.map((article) => (
-                <li key={article.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 py-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={article.image_url}
-                    alt=""
-                    className="h-16 w-20 shrink-0 border-2 border-neutral-950 object-cover shadow-[2px_2px_0_#171717]"
-                    onError={(e) => {
-                      e.currentTarget.onerror = null;
-                      e.currentTarget.src = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80";
-                    }}
-                  />
-                  <div className="min-w-0 flex-1 space-y-1">
-                    <p className="font-serif text-lg font-black leading-snug text-neutral-950">
-                      {article.title}
-                    </p>
-                    <div className="flex items-center gap-2 text-xs font-bold">
-                      <span className="bg-red-800 px-2 py-0.5 uppercase text-white">
-                        {article.category}
-                      </span>
-                      <time className="text-neutral-500">
-                        {new Date(article.published_at).toLocaleDateString()}
-                      </time>
+              {articles.map((article) => {
+                const isDummy = article.id.startsWith("dummy-");
+                return (
+                  <li key={article.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-4 py-4">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={article.image_url}
+                      alt=""
+                      className="h-16 w-20 shrink-0 border-2 border-neutral-950 object-cover shadow-[2px_2px_0_#171717]"
+                      onError={(e) => {
+                        e.currentTarget.onerror = null;
+                        e.currentTarget.src = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80";
+                      }}
+                    />
+                    <div className="min-w-0 flex-1 space-y-1">
+                      <p className="font-serif text-lg font-black leading-snug text-neutral-950">
+                        {article.title}
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+                        <span className="bg-red-800 px-2 py-0.5 uppercase text-white">
+                          {article.category}
+                        </span>
+                        {isDummy ? (
+                          <span className="bg-amber-100 border border-amber-800 px-2 py-0.5 text-[10px] font-black uppercase text-amber-950">
+                            Starter Template
+                          </span>
+                        ) : (
+                          <span className="bg-emerald-100 border border-emerald-800 px-2 py-0.5 text-[10px] font-black uppercase text-emerald-950">
+                            Database Live
+                          </span>
+                        )}
+                        <time className="text-neutral-500">
+                          {new Date(article.published_at).toLocaleDateString()}
+                        </time>
+                      </div>
                     </div>
-                  </div>
-                  <div className="flex shrink-0 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => startEdit(article)}
-                      className="border-2 border-neutral-950 bg-white px-3 py-1.5 text-xs font-black uppercase tracking-wider text-neutral-950 hover:bg-neutral-100 shadow-[2px_2px_0_#171717]"
-                    >
-                      Edit Post
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleDeleteArticle(article.id)}
-                      className="border-2 border-neutral-950 bg-red-800 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-white hover:bg-neutral-950 shadow-[2px_2px_0_#171717]"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </li>
-              ))}
+                    <div className="flex shrink-0 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => startEdit(article)}
+                        className="border-2 border-neutral-950 bg-white px-3 py-1.5 text-xs font-black uppercase tracking-wider text-neutral-950 hover:bg-neutral-100 shadow-[2px_2px_0_#171717]"
+                      >
+                        {isDummy ? "Customize" : "Edit Post"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteArticle(article.id)}
+                        className="border-2 border-neutral-950 bg-red-800 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-white hover:bg-neutral-950 shadow-[2px_2px_0_#171717]"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </section>
@@ -408,11 +474,24 @@ export default function AdminPage() {
           <div className="flex items-center justify-between border-b-2 border-neutral-950 pb-3">
             <div>
               <span className="bg-red-800 px-2 py-0.5 text-[10px] font-black uppercase text-white">
-                {editingId ? "EDITOR MODE" : "NEW STORY"}
+                {editingId
+                  ? editingId.startsWith("dummy-")
+                    ? "STARTER TEMPLATE EDITOR"
+                    : "EDITOR MODE"
+                  : "NEW STORY"}
               </span>
               <h2 className="font-serif text-2xl font-black text-neutral-950">
-                {editingId ? "Edit News Article" : "Publish News Article"}
+                {editingId
+                  ? editingId.startsWith("dummy-")
+                    ? "Customize & Publish Starter Post"
+                    : "Edit News Article"
+                  : "Publish News Article"}
               </h2>
+              {editingId && editingId.startsWith("dummy-") && (
+                <p className="mt-1 text-xs font-bold text-neutral-600">
+                  💡 This is a starter template. Saving changes will publish it directly to your Supabase database.
+                </p>
+              )}
             </div>
             {editingId && (
               <button
@@ -459,7 +538,7 @@ export default function AdminPage() {
 
             {/* RECTANGULAR DISTINCT FILE DROPZONE BOX FOR COVER IMAGE */}
             <div className="block text-xs font-black uppercase tracking-wider space-y-1">
-              <span>Cover Image {editingId && "(Leave empty to keep current)"}</span>
+              <span>Cover Image {editingId && "(Leave empty to keep current image)"}</span>
               <div className="relative border-2 border-dashed border-neutral-950 bg-[#f4efe4] hover:bg-[#eae3d2] transition p-3 text-center shadow-[3px_3px_0_#171717] cursor-pointer">
                 <input
                   type="file"
@@ -501,7 +580,9 @@ export default function AdminPage() {
               {newsLoading
                 ? "Saving..."
                 : editingId
-                  ? "Update Article"
+                  ? editingId.startsWith("dummy-")
+                    ? "Save & Publish to Database"
+                    : "Update Article"
                   : "Publish Story"}
             </button>
           </form>

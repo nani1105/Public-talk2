@@ -16,6 +16,7 @@ function LoginForm() {
   const next = searchParams.get("next") ?? "/admin";
   const [message, setMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const onSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
@@ -66,12 +67,22 @@ function LoginForm() {
           </label>
           <label className="block">
             <span className="text-sm font-bold">Password</span>
-            <input
-              name="password"
-              type="password"
-              required
-              className="mt-2 w-full border-2 border-neutral-950 bg-white px-3 py-3 outline-none focus:ring-4 focus:ring-red-800/20"
-            />
+            <div className="relative mt-2">
+              <input
+                name="password"
+                type={showPassword ? "text" : "password"}
+                required
+                className="w-full border-2 border-neutral-950 bg-white px-3 py-3 pr-16 outline-none focus:ring-4 focus:ring-red-800/20"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute inset-y-0 right-0 flex items-center px-3 text-xs font-black uppercase tracking-wider text-neutral-700 hover:text-red-800"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? "Hide" : "Show"}
+              </button>
+            </div>
           </label>
         </div>
         {message ? (

@@ -1,8 +1,9 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { NEWS_CATEGORIES, type NewsCategory, type NewsArticle } from "@/types/news";
 import { env } from "@/lib/env";
 import { createServiceClient, getPublicFileUrl } from "@/lib/supabase";
-import { getLocalArticles, saveLocalArticles, saveUploadedImage } from "@/lib/news";
+import { getLatestNews, getLocalArticles, saveLocalArticles, saveUploadedImage } from "@/lib/news";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -28,6 +29,10 @@ const getCoverImage = (formData: FormData) => {
   return image instanceof File && image.size > 0 ? image : null;
 };
 
+const isUuid = (str: string) => {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+};
+
 export async function PUT(request: Request, context: RouteContext) {
   try {
     const { id } = await context.params;
@@ -51,73 +56,159 @@ export async function PUT(request: Request, context: RouteContext) {
     let updatedArticle: NewsArticle | null = null;
 
     if (isRealSupabase) {
-      try {
-        const supabase = createServiceClient();
-        const { data: existingArticle } = await supabase
-          .from("news")
-          .select("image_path, image_url")
-          .eq("id", id)
-          .single();
+      const supabase = createServiceClient();
 
-        let imagePath = existingArticle?.image_path ?? "";
-        let imageUrl = existingArticle?.image_url ?? "";
+      // Case 1: Real Supabase article with a valid UUID
+      if (isUuid(id)) {
+        const updatePayload: Record<string, any> = {
+          title,
+          category,
+          body,
+          snippet: makeSnippet(body),
+        };
 
         if (image) {
-          imagePath = `${Date.now()}-${crypto.randomUUID()}${getExtension(image.name)}`;
-          const { error: uploadError } = await supabase.storage
-            .from(env.newsImageBucket())
-            .upload(imagePath, image, {
-              contentType: image.type,
-              upsert: false,
-              cacheControl: "31536000"
-            });
+          try {
+            const arrayBuffer = await image.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            const imagePath = `${Date.now()}-${crypto.randomUUID()}${getExtension(image.name)}`;
 
-          if (!uploadError) {
-            imageUrl = getPublicFileUrl(env.newsImageBucket(), imagePath);
+            const { error: uploadError } = await supabase.storage
+              .from(env.newsImageBucket())
+              .upload(imagePath, buffer, {
+                contentType: image.type || "image/jpeg",
+                upsert: false,
+                cacheControl: "31536000",
+              });
+
+            if (uploadError) {
+              console.error("[PUT news] Storage upload error:", uploadError);
+              return NextResponse.json(
+                { error: `Storage upload failed: ${uploadError.message}` },
+                { status: 500 }
+              );
+            }
+
+            updatePayload.image_path = imagePath;
+            updatePayload.image_url = getPublicFileUrl(env.newsImageBucket(), imagePath);
+          } catch (err) {
+            console.error("[PUT news] Image processing error:", err);
+            return NextResponse.json(
+              { error: `Image upload exception: ${err instanceof Error ? err.message : String(err)}` },
+              { status: 500 }
+            );
           }
         }
 
-        const { data } = await supabase
+        const { data, error: updateError } = await supabase
           .from("news")
-          .update({
+          .update(updatePayload)
+          .eq("id", id)
+          .select("*")
+          .single();
+
+        if (updateError) {
+          console.error("[PUT news] DB update error:", updateError);
+          return NextResponse.json(
+            { error: `Database update failed: ${updateError.message} (code: ${updateError.code})` },
+            { status: 500 }
+          );
+        }
+
+        if (data) {
+          updatedArticle = data;
+        }
+      } else {
+        // Case 2: Starter/Dummy article (ID like "dummy-1")
+        // User is customizing a sample post -> Save as a real article in Supabase!
+        let imageUrl = "https://images.unsplash.com/photo-1541872703-74c5e44368f9?auto=format&fit=crop&w=1200&q=80";
+        let imagePath = "";
+
+        if (image) {
+          try {
+            const arrayBuffer = await image.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            imagePath = `${Date.now()}-${crypto.randomUUID()}${getExtension(image.name)}`;
+
+            const { error: uploadError } = await supabase.storage
+              .from(env.newsImageBucket())
+              .upload(imagePath, buffer, {
+                contentType: image.type || "image/jpeg",
+                upsert: false,
+                cacheControl: "31536000",
+              });
+
+            if (uploadError) {
+              return NextResponse.json(
+                { error: `Storage upload failed: ${uploadError.message}` },
+                { status: 500 }
+              );
+            }
+
+            imageUrl = getPublicFileUrl(env.newsImageBucket(), imagePath);
+          } catch (err) {
+            return NextResponse.json(
+              { error: `Image upload exception: ${err instanceof Error ? err.message : String(err)}` },
+              { status: 500 }
+            );
+          }
+        } else {
+          // Retain the template image
+          const allArticles = await getLatestNews();
+          const existing = allArticles.find((a) => a.id === id);
+          if (existing?.image_url) {
+            imageUrl = existing.image_url;
+          }
+        }
+
+        const { data, error: insertError } = await supabase
+          .from("news")
+          .insert({
             title,
             category,
             body,
             snippet: makeSnippet(body),
             image_url: imageUrl,
-            image_path: imagePath
+            image_path: imagePath,
           })
-          .eq("id", id)
           .select("*")
           .single();
+
+        if (insertError) {
+          console.error("[PUT news] DB insert for template article error:", insertError);
+          return NextResponse.json(
+            { error: `Failed to publish template article: ${insertError.message} (code: ${insertError.code})` },
+            { status: 500 }
+          );
+        }
 
         if (data) {
           updatedArticle = data;
         }
-      } catch (err) {
-        console.warn("[PUT news] Supabase update error:", err);
       }
     }
 
-    // Local fallback update
-    const localArticles = await getLocalArticles();
-    const idx = localArticles.findIndex((a) => a.id === id);
-    if (idx !== -1) {
-      let imageUrl = localArticles[idx].image_url;
-      if (image) {
-        imageUrl = await saveUploadedImage(image);
-      }
+    // Local fallback update if Supabase is not configured
+    if (!updatedArticle) {
+      const localArticles = await getLocalArticles();
+      const idx = localArticles.findIndex((a) => a.id === id);
+      if (idx !== -1) {
+        let imageUrl = localArticles[idx].image_url;
+        if (image) {
+          imageUrl = await saveUploadedImage(image);
+        }
 
-      localArticles[idx] = {
-        ...localArticles[idx],
-        title,
-        category,
-        body,
-        snippet: makeSnippet(body),
-        image_url: imageUrl,
-      };
-      await saveLocalArticles(localArticles);
-      updatedArticle = localArticles[idx];
+        localArticles[idx] = {
+          ...localArticles[idx],
+          title,
+          category,
+          body,
+          snippet: makeSnippet(body),
+          image_url: imageUrl,
+        };
+        await saveLocalArticles(localArticles);
+        updatedArticle = localArticles[idx];
+      }
     }
 
     if (!updatedArticle) {
@@ -138,10 +229,23 @@ export async function PUT(request: Request, context: RouteContext) {
       };
     }
 
+    try {
+      revalidatePath("/");
+      revalidatePath("/admin");
+      if (updatedArticle?.id) {
+        revalidatePath(`/article/${updatedArticle.id}`);
+      }
+    } catch {
+      // Ignore revalidate error outside request context
+    }
+
     return NextResponse.json({ article: updatedArticle });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Unable to update article." }, { status: 500 });
+    console.error("[PUT news] Unhandled error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to update article." },
+      { status: 500 }
+    );
   }
 }
 
@@ -156,12 +260,29 @@ export async function DELETE(_request: Request, context: RouteContext) {
     const url = env.supabaseUrl();
     const isRealSupabase = Boolean(url && !url.includes("example.supabase.co") && !url.includes("dummy"));
 
-    if (isRealSupabase) {
+    if (isRealSupabase && isUuid(id)) {
+      const supabase = createServiceClient();
       try {
-        const supabase = createServiceClient();
-        await supabase.from("news").delete().eq("id", id);
-      } catch (err) {
-        console.warn("[DELETE news] Supabase delete error:", err);
+        const { data: existing } = await supabase
+          .from("news")
+          .select("image_path")
+          .eq("id", id)
+          .maybeSingle();
+
+        if (existing?.image_path) {
+          await supabase.storage.from(env.newsImageBucket()).remove([existing.image_path]);
+        }
+      } catch {
+        // Non-critical image cleanup failure
+      }
+
+      const { error: deleteError } = await supabase.from("news").delete().eq("id", id);
+      if (deleteError) {
+        console.error("[DELETE news] DB delete error:", deleteError);
+        return NextResponse.json(
+          { error: `Failed to delete from database: ${deleteError.message}` },
+          { status: 500 }
+        );
       }
     }
 
@@ -172,9 +293,19 @@ export async function DELETE(_request: Request, context: RouteContext) {
       await saveLocalArticles(filtered);
     }
 
+    try {
+      revalidatePath("/");
+      revalidatePath("/admin");
+    } catch {
+      // Ignore revalidate error outside request context
+    }
+
     return NextResponse.json({ ok: true });
   } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: "Unable to delete article." }, { status: 500 });
+    console.error("[DELETE news] error:", error);
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Unable to delete article." },
+      { status: 500 }
+    );
   }
 }
