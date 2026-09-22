@@ -78,33 +78,37 @@ export async function POST(request: Request) {
             cacheControl: "31536000"
           });
 
+        let imageUrl = "";
+        let finalImagePath = imagePath;
+
         if (uploadError) {
-          supabaseError = `Storage upload failed: ${uploadError.message}`;
-          console.error("[POST news] Storage upload error:", uploadError);
+          console.warn("[POST news] Supabase Storage upload failed, falling back to Base64 Data URL:", uploadError.message);
+          imageUrl = await saveUploadedImage(image);
+          finalImagePath = "";
         } else {
-          const imageUrl = getPublicFileUrl(env.newsImageBucket(), imagePath);
-          console.log("[POST news] Image uploaded, URL:", imageUrl?.slice(0, 60));
+          imageUrl = getPublicFileUrl(env.newsImageBucket(), imagePath);
+          console.log("[POST news] Image uploaded to Storage, URL:", imageUrl?.slice(0, 60));
+        }
 
-          const { data, error: insertError } = await supabase
-            .from("news")
-            .insert({
-              title,
-              category,
-              body,
-              snippet: makeSnippet(body),
-              image_url: imageUrl,
-              image_path: imagePath
-            })
-            .select("*")
-            .single();
+        const { data, error: insertError } = await supabase
+          .from("news")
+          .insert({
+            title,
+            category,
+            body,
+            snippet: makeSnippet(body),
+            image_url: imageUrl,
+            image_path: finalImagePath
+          })
+          .select("*")
+          .single();
 
-          if (insertError) {
-            supabaseError = `DB insert failed: ${insertError.message} [code: ${insertError.code}]`;
-            console.error("[POST news] DB insert error:", insertError);
-          } else if (data) {
-            console.log("[POST news] Article saved to Supabase, id:", data.id);
-            article = data;
-          }
+        if (insertError) {
+          supabaseError = `DB insert failed: ${insertError.message} [code: ${insertError.code}]`;
+          console.error("[POST news] DB insert error:", insertError);
+        } else if (data) {
+          console.log("[POST news] Article saved to Supabase, id:", data.id);
+          article = data;
         }
       } catch (err) {
         supabaseError = `Exception: ${err instanceof Error ? err.message : String(err)}`;
@@ -112,8 +116,7 @@ export async function POST(request: Request) {
       }
     }
 
-    // If Supabase failed, return the specific error instead of silently falling back
-    // so admin knows exactly what went wrong
+    // If Supabase failed DB insert, return error
     if (!article && isRealSupabase && supabaseError) {
       return NextResponse.json(
         { error: `Supabase error — ${supabaseError}. Check Vercel logs for details.` },

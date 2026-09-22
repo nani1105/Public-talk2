@@ -49,57 +49,73 @@ export async function PUT(request: Request, context: RouteContext) {
 
     const url = env.supabaseUrl();
     const isRealSupabase = Boolean(url && !url.includes("example.supabase.co") && !url.includes("dummy"));
+
     let updatedArticle: NewsArticle | null = null;
     let supabaseError: string | null = null;
+
+    // 1. Fetch existing article details from local fallback & Supabase to preserve current image if no new file uploaded
+    const localArticles = await getLocalArticles();
+    const existingLocal = localArticles.find(
+      (a) => a.id === id || a.title.trim().toLowerCase() === title.toLowerCase()
+    );
 
     if (isRealSupabase) {
       try {
         const supabase = createServiceClient();
-        let existingImagePath = "";
-        let existingImageUrl = "";
+        let existingSupabase: NewsArticle | null = null;
 
-        // Only query Supabase by ID if the ID is a valid UUID
         if (isUuid(id)) {
-          const { data: existingArticle } = await supabase
+          const { data } = await supabase
             .from("news")
-            .select("image_path, image_url")
+            .select("*")
             .eq("id", id)
             .maybeSingle();
-
-          if (existingArticle) {
-            existingImagePath = existingArticle.image_path ?? "";
-            existingImageUrl = existingArticle.image_url ?? "";
-          }
+          if (data) existingSupabase = data;
         }
 
-        let imagePath = existingImagePath;
-        let imageUrl = existingImageUrl;
+        if (!existingSupabase && title) {
+          const { data } = await supabase
+            .from("news")
+            .select("*")
+            .eq("title", title)
+            .maybeSingle();
+          if (data) existingSupabase = data;
+        }
 
+        const targetId = existingSupabase?.id ?? (isUuid(id) ? id : crypto.randomUUID());
+        let imageUrl = existingSupabase?.image_url || existingLocal?.image_url || "";
+        let imagePath = existingSupabase?.image_path || existingLocal?.image_path || "";
+
+        // If a new image was uploaded in the edit form, process it
         if (image) {
-          imagePath = `${Date.now()}-${crypto.randomUUID()}${getExtension(image.name)}`;
+          const newImagePath = `${Date.now()}-${crypto.randomUUID()}${getExtension(image.name)}`;
           const arrayBuffer = await image.arrayBuffer();
+
           const { error: uploadError } = await supabase.storage
             .from(env.newsImageBucket())
-            .upload(imagePath, arrayBuffer, {
+            .upload(newImagePath, arrayBuffer, {
               contentType: image.type || "image/jpeg",
-              upsert: false,
+              upsert: true,
               cacheControl: "31536000",
             });
 
           if (!uploadError) {
-            imageUrl = getPublicFileUrl(env.newsImageBucket(), imagePath);
+            imageUrl = getPublicFileUrl(env.newsImageBucket(), newImagePath);
+            imagePath = newImagePath;
+            console.log("[PUT news] Updated image on Supabase Storage:", imageUrl?.slice(0, 60));
           } else {
-            console.error("[PUT news] Storage upload error:", uploadError);
+            console.warn("[PUT news] Storage upload error, falling back to Base64 Data URL:", uploadError.message);
+            imageUrl = await saveUploadedImage(image);
+            imagePath = "";
           }
         }
 
+        // Final fallback if image is still missing
         if (!imageUrl) {
-          imageUrl = await saveUploadedImage(image ?? new File([], "fallback.jpg"));
+          imageUrl = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80";
         }
 
-        const targetId = isUuid(id) ? id : crypto.randomUUID();
-
-        const { data, error: upsertError } = await supabase
+        const { data: upsertData, error: upsertError } = await supabase
           .from("news")
           .upsert(
             {
@@ -119,17 +135,16 @@ export async function PUT(request: Request, context: RouteContext) {
         if (upsertError) {
           supabaseError = upsertError.message;
           console.error("[PUT news] Supabase upsert error:", upsertError);
-        } else if (data) {
-          updatedArticle = data;
+        } else if (upsertData) {
+          updatedArticle = upsertData;
         }
       } catch (err) {
         supabaseError = err instanceof Error ? err.message : String(err);
-        console.warn("[PUT news] Supabase update exception:", err);
+        console.error("[PUT news] Supabase update exception:", err);
       }
     }
 
-    // Local fallback update
-    const localArticles = await getLocalArticles();
+    // 2. Local fallback update (when Supabase is disabled or fails)
     const idx = localArticles.findIndex((a) => a.id === id || a.title.trim().toLowerCase() === title.toLowerCase());
     if (idx !== -1) {
       let imageUrl = localArticles[idx].image_url;
@@ -150,7 +165,14 @@ export async function PUT(request: Request, context: RouteContext) {
     }
 
     if (!updatedArticle) {
-      let imageUrl = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80";
+      if (isRealSupabase && supabaseError) {
+        return NextResponse.json(
+          { error: `Database update failed: ${supabaseError}` },
+          { status: 500 }
+        );
+      }
+
+      let imageUrl = existingLocal?.image_url || "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80";
       if (image) {
         imageUrl = await saveUploadedImage(image);
       }
@@ -167,17 +189,21 @@ export async function PUT(request: Request, context: RouteContext) {
       };
     }
 
+    // 3. Revalidate Next.js cache so changes immediately appear on deployment
     try {
       revalidatePath("/", "layout");
       revalidatePath("/admin");
       revalidatePath(`/article/${id}`);
+      if (updatedArticle.id !== id) {
+        revalidatePath(`/article/${updatedArticle.id}`);
+      }
     } catch (e) {
       console.warn("[PUT news] revalidatePath error:", e);
     }
 
     return NextResponse.json({ article: updatedArticle });
   } catch (error) {
-    console.error("[PUT news] error:", error);
+    console.error("[PUT news] Unhandled error:", error);
     return NextResponse.json({ error: "Unable to update article." }, { status: 500 });
   }
 }
@@ -203,7 +229,9 @@ export async function DELETE(_request: Request, context: RouteContext) {
         if (isUuid(id)) {
           const { error } = await supabase.from("news").delete().eq("id", id);
           if (error) console.error("[DELETE news] Supabase delete error:", error);
-        } else if (targetLocal?.title) {
+        }
+
+        if (targetLocal?.title) {
           const { error } = await supabase.from("news").delete().eq("title", targetLocal.title);
           if (error) console.error("[DELETE news] Supabase delete by title error:", error);
         }
