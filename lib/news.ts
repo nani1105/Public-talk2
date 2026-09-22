@@ -118,6 +118,71 @@ export const saveLocalArticles = async (articles: NewsArticle[]) => {
   }
 };
 
+export const isUuid = (id: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+};
+
+export const syncLocalArticlesToSupabase = async (): Promise<{ synced: number; errors: string[] }> => {
+  const url = env.supabaseUrl();
+  const isRealSupabase = Boolean(url && !url.includes("example.supabase.co") && !url.includes("dummy"));
+  if (!isRealSupabase) {
+    return { synced: 0, errors: ["Supabase credentials are not configured."] };
+  }
+
+  const localArticles = await getLocalArticles();
+  if (localArticles.length === 0) {
+    return { synced: 0, errors: [] };
+  }
+
+  const errors: string[] = [];
+  let synced = 0;
+
+  try {
+    const supabase = createServiceClient();
+    const { data: existingDbArticles } = await supabase.from("news").select("id, title");
+    const existingTitles = new Set((existingDbArticles || []).map((a) => a.title.trim().toLowerCase()));
+
+    for (const article of localArticles) {
+      if (existingTitles.has(article.title.trim().toLowerCase())) {
+        console.log(`[syncLocalArticlesToSupabase] Article "${article.title}" already exists in DB.`);
+        continue;
+      }
+
+      let imageUrl = article.image_url || "";
+      if (!imageUrl || imageUrl.startsWith("/uploads/")) {
+        imageUrl = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80";
+      }
+
+      const newId = isUuid(article.id) ? article.id : crypto.randomUUID();
+
+      const { error: insertError } = await supabase.from("news").insert({
+        id: newId,
+        title: article.title,
+        category: article.category,
+        body: article.body,
+        snippet: article.snippet || article.body.slice(0, 140),
+        image_url: imageUrl,
+        image_path: article.image_path || "",
+        published_at: article.published_at || new Date().toISOString(),
+      });
+
+      if (insertError) {
+        console.error(`[syncLocalArticlesToSupabase] Failed to migrate "${article.title}":`, insertError.message);
+        errors.push(`"${article.title}": ${insertError.message}`);
+      } else {
+        synced++;
+        console.log(`[syncLocalArticlesToSupabase] Migrated "${article.title}" with ID ${newId}`);
+      }
+    }
+  } catch (err) {
+    console.error("[syncLocalArticlesToSupabase] Error:", err);
+    errors.push(err instanceof Error ? err.message : String(err));
+  }
+
+  return { synced, errors };
+};
+
 export const getLatestNews = async (): Promise<NewsArticle[]> => {
   const url = env.supabaseUrl();
   const isRealSupabase = Boolean(url && !url.includes("example.supabase.co") && !url.includes("dummy"));
@@ -139,7 +204,13 @@ export const getLatestNews = async (): Promise<NewsArticle[]> => {
         console.log("[getLatestNews] Loaded", data.length, "articles from Supabase");
         dbArticles = data;
       } else {
-        console.log("[getLatestNews] Supabase returned 0 articles");
+        console.log("[getLatestNews] Supabase returned 0 articles. Attempting auto-sync of local articles...");
+        await syncLocalArticlesToSupabase();
+        const { data: recheckData } = await supabase
+          .from("news")
+          .select("*")
+          .order("published_at", { ascending: false });
+        if (recheckData) dbArticles = recheckData;
       }
     } catch (err) {
       console.error("[getLatestNews] exception:", err);
@@ -147,7 +218,12 @@ export const getLatestNews = async (): Promise<NewsArticle[]> => {
   }
 
   const localArticles = await getLocalArticles();
-  const allArticles = [...localArticles, ...dbArticles];
+  
+  // Deduplicate articles by title so local articles matching DB don't show up twice
+  const dbTitles = new Set(dbArticles.map((a) => a.title.trim().toLowerCase()));
+  const uniqueLocalArticles = localArticles.filter((a) => !dbTitles.has(a.title.trim().toLowerCase()));
+
+  const allArticles = [...dbArticles, ...uniqueLocalArticles];
 
   if (allArticles.length > 0) {
     return allArticles.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime());

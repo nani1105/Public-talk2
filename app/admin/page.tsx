@@ -75,6 +75,8 @@ export default function AdminPage() {
   const [coverFile, setCoverFile] = useState<File | null>(null);
   const [epaperFile, setEpaperFile] = useState<File | null>(null);
 
+  const [syncLoading, setSyncLoading] = useState(false);
+
   const loadData = useCallback(async () => {
     const [newsRes, epaperRes] = await Promise.all([
       fetch("/api/admin/news"),
@@ -87,6 +89,25 @@ export default function AdminPage() {
       setEpaperViewerUrl(data.viewerUrl ?? "/api/epaper");
     }
   }, []);
+
+  async function handleSyncArticles() {
+    setSyncLoading(true);
+    setNewsMsg(null);
+    try {
+      const res = await fetch("/api/admin/sync", { method: "POST" });
+      const data = await res.json();
+      if (!res.ok) {
+        setNewsMsg({ type: "err", text: data.error ?? "Sync failed" });
+      } else {
+        setNewsMsg({ type: "ok", text: data.message ?? "Articles synced successfully!" });
+        await loadData();
+      }
+    } catch {
+      setNewsMsg({ type: "err", text: "Network error during sync" });
+    } finally {
+      setSyncLoading(false);
+    }
+  }
 
   useEffect(() => {
     loadData();
@@ -347,9 +368,20 @@ export default function AdminPage() {
                 Published Articles
               </h2>
             </div>
-            <span className="font-mono text-xs font-black text-neutral-800">
-              {articles.length} ARTICLE{articles.length !== 1 ? "S" : ""} TOTAL
-            </span>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSyncArticles}
+                disabled={syncLoading}
+                className="border-2 border-neutral-950 bg-amber-400 px-3 py-1.5 text-xs font-black uppercase tracking-wider text-neutral-950 hover:bg-amber-500 shadow-[2px_2px_0_#171717] disabled:opacity-50"
+                title="Migrate any local JSON articles to Supabase cloud database"
+              >
+                {syncLoading ? "Syncing..." : "⚡ Sync Local to Cloud DB"}
+              </button>
+              <span className="font-mono text-xs font-black text-neutral-800">
+                {articles.length} ARTICLE{articles.length !== 1 ? "S" : ""} TOTAL
+              </span>
+            </div>
           </div>
 
           {articles.length === 0 ? (

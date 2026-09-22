@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidatePath } from "next/cache";
 import { NEWS_CATEGORIES, type NewsCategory, type NewsArticle } from "@/types/news";
 import { env } from "@/lib/env";
 import { createServiceClient, getPublicFileUrl } from "@/lib/supabase";
@@ -125,7 +126,7 @@ export async function POST(request: Request) {
       const localImageUrl = await saveUploadedImage(image);
 
       const newArticle: NewsArticle = {
-        id: `post-${Date.now()}`,
+        id: crypto.randomUUID(),
         title,
         category,
         body,
@@ -138,6 +139,13 @@ export async function POST(request: Request) {
       const existingLocal = await getLocalArticles();
       await saveLocalArticles([newArticle, ...existingLocal]);
       article = newArticle;
+    }
+
+    try {
+      revalidatePath("/", "layout");
+      revalidatePath("/admin");
+    } catch (e) {
+      console.warn("[POST news] revalidatePath error:", e);
     }
 
     return NextResponse.json({ article }, { status: 201 });
