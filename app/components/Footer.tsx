@@ -3,41 +3,86 @@
 import Link from "next/link";
 
 export default function Footer() {
-  return (
-    <footer className="mt-12 border-t-4 border-neutral-950 bg-[#171717] text-white">
-      <div className="mx-auto max-w-7xl px-5 py-10 md:px-8 space-y-8">
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6 border-b border-neutral-800 pb-8">
-          <div className="space-y-2">
-            <p className="text-xs font-black uppercase tracking-[0.3em] text-red-500">
-              Independent News Agency
-            </p>
-            <h2 className="font-serif text-4xl md:text-5xl font-black tracking-tight text-white">
-              Public Talk
-            </h2>
-            <p className="text-xs text-neutral-400 max-w-md font-medium leading-relaxed">
-              Unbiased news reporting, local investigation, public records, and high-fidelity digital e-paper publishing.
-            </p>
-          </div>
+  const getShareUrl = () => {
+    if (typeof window !== "undefined") return window.location.href;
+    return "https://epaper.publictalk.in";
+  };
 
-          <div className="flex flex-wrap gap-4 text-xs font-bold uppercase tracking-wider">
-            <Link href="/" className="hover:text-red-400 transition">
-              Main Website
-            </Link>
-            <span>·</span>
-            <Link href="/epaper" className="hover:text-red-400 transition">
-              Daily E-Paper
-            </Link>
-            <span>·</span>
-            <Link href="/admin" className="hover:text-red-400 transition">
-              Admin Portal
-            </Link>
-          </div>
+  return (
+    <footer className="mt-12 border-t-4 border-neutral-950 bg-[#1e232a] text-white">
+      <div className="mx-auto max-w-7xl px-4 py-8 md:px-8 space-y-6 text-center">
+        {/* SOCIAL SHARE BUTTONS ROW */}
+        <div className="flex items-center justify-center gap-3 pt-2">
+          {/* Facebook */}
+          <a
+            href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(getShareUrl())}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-9 w-9 items-center justify-center rounded bg-[#3b5998] text-white hover:opacity-90 transition font-bold text-base shadow"
+            title="Share on Facebook"
+          >
+            f
+          </a>
+          {/* Twitter / X */}
+          <a
+            href={`https://twitter.com/intent/tweet?url=${encodeURIComponent(getShareUrl())}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-9 w-9 items-center justify-center rounded bg-black text-white hover:opacity-90 transition font-bold text-xs shadow border border-neutral-700"
+            title="Share on Twitter"
+          >
+            𝕏
+          </a>
+          {/* WhatsApp */}
+          <a
+            href={`https://api.whatsapp.com/send?text=${encodeURIComponent(getShareUrl())}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-9 w-9 items-center justify-center rounded bg-[#25D366] text-white hover:opacity-90 transition font-bold text-base shadow"
+            title="Share on WhatsApp"
+          >
+            💬
+          </a>
+          {/* Telegram */}
+          <a
+            href={`https://t.me/share/url?url=${encodeURIComponent(getShareUrl())}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="flex h-9 w-9 items-center justify-center rounded bg-[#0088cc] text-white hover:opacity-90 transition font-bold text-base shadow"
+            title="Share on Telegram"
+          >
+            ✈
+          </a>
+          {/* Email */}
+          <a
+            href={`mailto:?subject=Public Talk E-Paper&body=${encodeURIComponent(getShareUrl())}`}
+            className="flex h-9 w-9 items-center justify-center rounded bg-[#ea4335] text-white hover:opacity-90 transition font-bold text-base shadow"
+            title="Share via Email"
+          >
+            ✉
+          </a>
         </div>
 
-        <div className="flex flex-col md:flex-row items-center justify-between text-xs font-semibold text-neutral-500 gap-4">
-          <p>© {new Date().getFullYear()} Public Talk News Agency. All rights reserved.</p>
-          <p className="uppercase tracking-widest text-[10px] text-neutral-400">
-            Editorial Integrity · Public Record · Independent Journalism
+        {/* NAVIGATION LINKS */}
+        <div className="flex flex-wrap justify-center gap-4 text-xs font-bold uppercase tracking-wider text-neutral-400 pt-2">
+          <Link href="/" className="hover:text-white transition">
+            Main Website
+          </Link>
+          <span>·</span>
+          <Link href="/epaper" className="hover:text-white transition">
+            Daily E-Paper
+          </Link>
+          <span>·</span>
+          <Link href="/admin" className="hover:text-white transition">
+            Admin Portal
+          </Link>
+        </div>
+
+        {/* COPYRIGHT & CREDITS */}
+        <div className="pt-4 border-t border-neutral-800 space-y-1 text-xs text-neutral-400">
+          <p>© {new Date().getFullYear()} epaper.publictalk.in . All rights reserved.</p>
+          <p className="text-[10px] text-neutral-500 uppercase tracking-widest">
+            Public Talk Media Group · Official Digital Publication
           </p>
         </div>
       </div>

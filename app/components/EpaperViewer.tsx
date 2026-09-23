@@ -84,26 +84,16 @@ export default function EpaperViewer({ url, showThumbnails = true }: EpaperViewe
     setPanPosition({ x: 0, y: 0 });
   };
 
-  // Mouse Drag Handlers
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return; // Left click only
-    setIsDragging(true);
-    setDragStart({ x: e.clientX - panPosition.x, y: e.clientY - panPosition.y });
-  };
+  // Touch & Mouse Gesture Handlers for Mobile & Desktop Swipe Page Navigation
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+  const touchStartTimeRef = useRef<number>(0);
 
-  const handleMouseMove = (e: React.MouseEvent) => {
-    if (!isDragging) return;
-    setPanPosition({
-      x: e.clientX - dragStart.x,
-      y: e.clientY - dragStart.y,
-    });
-  };
-
-  const handleMouseUp = () => setIsDragging(false);
-
-  // Touch Gesture Handlers for Mobile
   const handleTouchStart = (e: React.TouchEvent) => {
     if (e.touches.length === 1) {
+      touchStartXRef.current = e.touches[0].clientX;
+      touchStartYRef.current = e.touches[0].clientY;
+      touchStartTimeRef.current = Date.now();
       setIsDragging(true);
       setDragStart({
         x: e.touches[0].clientX - panPosition.x,
@@ -121,7 +111,72 @@ export default function EpaperViewer({ url, showThumbnails = true }: EpaperViewe
     }
   };
 
-  const handleTouchEnd = () => setIsDragging(false);
+  const handleTouchEnd = (e: React.TouchEvent) => {
+    setIsDragging(false);
+    if (touchStartXRef.current !== null && touchStartYRef.current !== null && e.changedTouches.length === 1) {
+      const touchEndX = e.changedTouches[0].clientX;
+      const touchEndY = e.changedTouches[0].clientY;
+      const deltaX = touchEndX - touchStartXRef.current;
+      const deltaY = touchEndY - touchStartYRef.current;
+      const elapsedTime = Date.now() - touchStartTimeRef.current;
+
+      // Horizontal swipe distance > 40px and dominant over vertical swipe -> Change page!
+      if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) && elapsedTime < 800) {
+        if (deltaX < 0) {
+          changePage(1); // Swiped Left -> Next Page
+        } else {
+          changePage(-1); // Swiped Right -> Previous Page
+        }
+      } else if (scale <= 1.05) {
+        setPanPosition({ x: 0, y: 0 });
+      }
+    }
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+  };
+
+  // Mouse Drag & Swipe Handlers
+  const mouseStartXRef = useRef<number | null>(null);
+  const mouseStartYRef = useRef<number | null>(null);
+  const mouseStartTimeRef = useRef<number>(0);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    mouseStartXRef.current = e.clientX;
+    mouseStartYRef.current = e.clientY;
+    mouseStartTimeRef.current = Date.now();
+    setIsDragging(true);
+    setDragStart({ x: e.clientX - panPosition.x, y: e.clientY - panPosition.y });
+  };
+
+  const handleMouseMove = (e: React.MouseEvent) => {
+    if (!isDragging) return;
+    setPanPosition({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y,
+    });
+  };
+
+  const handleMouseUp = (e: React.MouseEvent) => {
+    setIsDragging(false);
+    if (mouseStartXRef.current !== null && mouseStartYRef.current !== null) {
+      const deltaX = e.clientX - mouseStartXRef.current;
+      const deltaY = e.clientY - mouseStartYRef.current;
+      const elapsedTime = Date.now() - mouseStartTimeRef.current;
+
+      if (Math.abs(deltaX) > 40 && Math.abs(deltaX) > Math.abs(deltaY) && elapsedTime < 800) {
+        if (deltaX < 0) {
+          changePage(1);
+        } else {
+          changePage(-1);
+        }
+      } else if (scale <= 1.05) {
+        setPanPosition({ x: 0, y: 0 });
+      }
+    }
+    mouseStartXRef.current = null;
+    mouseStartYRef.current = null;
+  };
 
   // Wheel Zoom Listener
   const handleWheel = (e: React.WheelEvent) => {
@@ -311,6 +366,12 @@ export default function EpaperViewer({ url, showThumbnails = true }: EpaperViewe
           {/* FLOATING SEMI-TRANSPARENT MIDDLE LEFT & RIGHT PAGE NAVIGATION BUTTONS */}
           {numPages && numPages > 1 && (
             <>
+              {/* MOBILE PAGE INDICATOR PILL & SWIPE HINT */}
+              <div className="md:hidden absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-neutral-900/85 text-white text-[11px] font-mono font-bold px-3 py-1 rounded-full backdrop-blur-md border border-white/20 shadow-lg flex items-center gap-1.5 pointer-events-none">
+                <span className="text-red-400 font-black">‹</span>
+                <span>పేజీ {pageNumber} / {numPages}</span>
+                <span className="text-red-400 font-black">›</span>
+              </div>
               <button
                 type="button"
                 disabled={pageNumber <= 1}
