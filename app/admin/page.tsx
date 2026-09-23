@@ -496,7 +496,6 @@ export default function AdminPage() {
                   <option value="క్రీడలు">క్రీడలు (Sports)</option>
                   <option value="సినిమా">సినిమా (Cinema)</option>
                   <option value="ఫీచర్ పేజీలు">ఫీచర్ పేజీలు (Feature Pages)</option>
-                  <option value="వసుంధర">వసుంధర (Vasundhara)</option>
                 </optgroup>
                 <optgroup label="English Categories">
                   <option value="Politics">Politics</option>

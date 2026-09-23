@@ -8,7 +8,6 @@ export const NEWS_CATEGORIES = [
   "క్రీడలు",
   "సినిమా",
   "ఫీచర్ పేజీలు",
-  "వసుంధర",
   "Politics",
   "Local",
   "Sports",

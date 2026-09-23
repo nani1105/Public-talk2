@@ -41,7 +41,6 @@ const isCategoryMatch = (articleCategory: string, selectedCategory?: string | nu
     "sports": ["sports", "క్రీడలు"],
     "సినిమా": ["cinema", "movies", "entertainment", "సినిమా"],
     "ఫీచర్ పేజీలు": ["features", "ఫీచర్ పేజీలు"],
-    "వసుంధర": ["vasundhara", "women", "వసుంధర"],
     "తాజా వార్తలు": ["latest", "తాజా వార్తలు"]
   };
 

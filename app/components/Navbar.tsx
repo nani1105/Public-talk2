@@ -20,7 +20,7 @@ export default function Navbar({ activeCategory }: NavbarProps) {
     { label: "క్రీడలు", category: "క్రీడలు", href: "/?category=క్రీడలు" },
     { label: "సినిమా", category: "సినిమా", href: "/?category=సినిమా" },
     { label: "ఫీచర్ పేజీలు", category: "ఫీచర్ పేజీలు", href: "/?category=ఫీచర్ పేజీలు" },
-    { label: "వసుంధర", category: "వసుంధర", href: "/?category=వసుంధర" },
+
     { label: "ఈ-పేపర్", category: null, href: "/epaper", isEpaper: true },
   ];
 
