@@ -92,7 +92,7 @@ export default async function EpaperPage() {
       {/* MAIN READER CONTAINER */}
       <section className="mx-auto max-w-7xl px-4 py-8 md:px-8 space-y-8">
         {/* Edition Summary Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 border-2 border-neutral-950 bg-white p-4 shadow-[6px_6px_0_#171717]">
+        <div className="hidden md:flex flex-wrap items-center justify-between gap-4 border-2 border-neutral-950 bg-white p-4 shadow-[6px_6px_0_#171717]">
           <div>
             <span className="bg-red-800 px-2 py-0.5 text-[10px] font-black uppercase text-white">
               Current Live Issue

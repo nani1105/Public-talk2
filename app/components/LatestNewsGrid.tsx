@@ -83,67 +83,119 @@ export default function LatestNewsGrid({
       {filtered.length === 0 ? (
         <div className="border-2 border-dashed border-neutral-400 bg-white p-8 text-center">
           <p className="font-serif text-lg font-bold text-neutral-700">
-            No articles found in this section.
+            ఈ విభాగంలో వార్తలు లేవు (No articles found).
           </p>
           <p className="mt-1 text-xs font-medium text-neutral-500">
-            Check back later for fresh updates from our newsroom.
+            తాజా వార్తల కోసం వేచి చూడండి.
           </p>
         </div>
       ) : (
-        <div className="grid gap-6 md:grid-cols-2">
-          {filtered.map((article) => (
-            <article
-              key={article.id}
-              className="group flex flex-col justify-between border-2 border-neutral-950 bg-white p-4 shadow-[4px_4px_0_#171717] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#171717]"
-            >
-              <div className="space-y-3">
-                {article.image_url ? (
-                  <Link href={`/article/${article.id}`} className="block relative h-40 w-full overflow-hidden border border-neutral-900 bg-neutral-100">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={article.image_url}
-                      alt={article.title}
-                      loading="lazy"
-                      decoding="async"
-                      className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
-                      onError={(e) => {
-                        e.currentTarget.onerror = null;
-                        e.currentTarget.src = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80";
-                      }}
-                    />
-                  </Link>
-                ) : (
-                  <div className="flex h-32 w-full items-center justify-center border border-dashed border-neutral-300 bg-neutral-50 text-xs font-bold text-neutral-400">
-                    Public Talk Archive Image
-                  </div>
-                )}
+        <div className="space-y-4">
+          {/* Mobile News Feed List (Eenadu Style) */}
+          <div className="md:hidden divide-y-2 divide-neutral-200">
+            {filtered.map((article) => (
+              <article key={article.id} className="py-3 flex gap-3 items-start group">
+                <Link href={`/article/${article.id}`} className="shrink-0 relative h-16 w-20 border border-neutral-900 overflow-hidden bg-neutral-100">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={article.image_url}
+                    alt={article.title}
+                    loading="lazy"
+                    className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                    onError={(e) => {
+                      e.currentTarget.onerror = null;
+                      e.currentTarget.src = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80";
+                    }}
+                  />
+                </Link>
 
-                <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold">
-                  <span className="bg-red-800 px-2 py-0.5 uppercase tracking-wide text-white">
-                    {article.category}
-                  </span>
-                  <time className="text-neutral-500">{formatDate(article.published_at)}</time>
+                <div className="min-w-0 flex-1 space-y-1">
+                  <Link href={`/article/${article.id}`} className="block">
+                    <h3 className="font-serif text-sm font-black leading-snug text-[#003865] group-hover:text-red-800 transition line-clamp-2">
+                      {article.title}
+                    </h3>
+                  </Link>
+                  <p className="text-[11px] text-neutral-600 line-clamp-1">
+                    {article.snippet || article.body}
+                  </p>
+                  <div className="flex items-center gap-2 text-[10px] font-bold">
+                    <span className="bg-red-800 px-1.5 py-0.5 text-white uppercase">
+                      {article.category}
+                    </span>
+                    <time className="text-neutral-500">{formatDate(article.published_at)}</time>
+                  </div>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {/* Desktop & Tablet Grid View */}
+          <div className="hidden md:grid gap-6 md:grid-cols-2">
+            {filtered.map((article) => (
+              <article
+                key={article.id}
+                className="group flex flex-col justify-between border-2 border-neutral-950 bg-white p-4 shadow-[4px_4px_0_#171717] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#171717]"
+              >
+                <div className="space-y-3">
+                  {article.image_url ? (
+                    <Link href={`/article/${article.id}`} className="block relative h-40 w-full overflow-hidden border border-neutral-900 bg-neutral-100">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={article.image_url}
+                        alt={article.title}
+                        loading="lazy"
+                        decoding="async"
+                        className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+                        onError={(e) => {
+                          e.currentTarget.onerror = null;
+                          e.currentTarget.src = "https://images.unsplash.com/photo-1504711434969-e33886168f5c?auto=format&fit=crop&w=1200&q=80";
+                        }}
+                      />
+                    </Link>
+                  ) : (
+                    <div className="flex h-32 w-full items-center justify-center border border-dashed border-neutral-300 bg-neutral-50 text-xs font-bold text-neutral-400">
+                      Public Talk Archive Image
+                    </div>
+                  )}
+
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-xs font-bold">
+                    <span className="bg-red-800 px-2 py-0.5 uppercase tracking-wide text-white">
+                      {article.category}
+                    </span>
+                    <time className="text-neutral-500">{formatDate(article.published_at)}</time>
+                  </div>
+
+                  <Link href={`/article/${article.id}`} className="block">
+                    <h3 className="font-serif text-xl font-black leading-tight text-neutral-950 group-hover:text-red-900 transition">
+                      {article.title}
+                    </h3>
+                  </Link>
+
+                  <p className="text-xs leading-relaxed text-neutral-700 line-clamp-3">
+                    {article.snippet || article.body}
+                  </p>
                 </div>
 
-                <Link href={`/article/${article.id}`} className="block">
-                  <h3 className="font-serif text-xl font-black leading-tight text-neutral-950 group-hover:text-red-900 transition">
-                    {article.title}
-                  </h3>
-                </Link>
+                <div className="mt-4 border-t border-neutral-200 pt-3 flex justify-between items-center text-xs font-bold text-neutral-900">
+                  <span>PUBLIC TALK REPORT</span>
+                  <Link href={`/article/${article.id}`} className="text-red-800 group-hover:underline">
+                    Read Story →
+                  </Link>
+                </div>
+              </article>
+            ))}
+          </div>
 
-                <p className="text-xs leading-relaxed text-neutral-700 line-clamp-3">
-                  {article.snippet || article.body}
-                </p>
-              </div>
-
-              <div className="mt-4 border-t border-neutral-200 pt-3 flex justify-between items-center text-xs font-bold text-neutral-900">
-                <span>PUBLIC TALK REPORT</span>
-                <Link href={`/article/${article.id}`} className="text-red-800 group-hover:underline">
-                  Read Story →
-                </Link>
-              </div>
-            </article>
-          ))}
+          {/* మరిన్ని (More Stories) Button matching Screenshot */}
+          <div className="pt-4 text-center">
+            <button
+              type="button"
+              onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })}
+              className="w-full md:w-auto inline-block border-2 border-neutral-950 bg-[#004080] px-8 py-2.5 text-sm font-black text-white hover:bg-neutral-900 transition shadow-[3px_3px_0_#171717]"
+            >
+              మరిన్ని (More Stories) ↑
+            </button>
+          </div>
         </div>
       )}
     </div>

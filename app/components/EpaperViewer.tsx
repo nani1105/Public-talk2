@@ -35,19 +35,22 @@ export default function EpaperViewer({ url, showThumbnails = true }: EpaperViewe
 
   const viewerContainerRef = useRef<HTMLDivElement>(null);
 
-  // Responsive container width calculation (larger ratio for newspaper readability)
+  // Responsive container width calculation (fit screen width cleanly on mobile)
   const updateBaseWidth = useCallback(() => {
     const isMobile = typeof window !== "undefined" && window.innerWidth < 768;
-    const padding = isMobile ? 16 : 300;
 
     if (viewerContainerRef.current) {
       const containerW = viewerContainerRef.current.clientWidth;
-      const availableW = Math.max(280, containerW - padding);
+      const availableW = isMobile ? Math.max(260, containerW - 12) : Math.max(280, containerW - 300);
       setBaseWidth(Math.min(availableW, 1100));
     } else if (typeof window !== "undefined") {
       const screenW = window.innerWidth;
-      const availableW = isMobile ? screenW - 24 : screenW - 300;
+      const availableW = isMobile ? screenW - 16 : screenW - 300;
       setBaseWidth(Math.min(availableW, 1100));
+    }
+
+    if (isMobile) {
+      setScale(1.0);
     }
   }, []);
 
@@ -181,7 +184,7 @@ export default function EpaperViewer({ url, showThumbnails = true }: EpaperViewe
       }`}
     >
       {/* PROFESSIONAL TOOLBAR */}
-      <div className="w-full border-4 border-neutral-950 bg-white p-3 shadow-[6px_6px_0_#171717]">
+      <div className="hidden md:block w-full border-4 border-neutral-950 bg-white p-3 shadow-[6px_6px_0_#171717]">
         <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-bold text-neutral-950">
           {/* Left: Page Nav & Indicator */}
           <div className="flex items-center gap-2">
@@ -301,10 +304,40 @@ export default function EpaperViewer({ url, showThumbnails = true }: EpaperViewe
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
           onWheel={handleWheel}
-          className={`flex-1 w-full flex justify-center items-start overflow-hidden min-h-[600px] border-4 border-neutral-950 bg-[#e8e3d8] p-4 shadow-[8px_8px_0_#171717] select-none ${
+          className={`relative flex-1 w-full flex justify-center items-start overflow-hidden min-h-[500px] border-4 border-neutral-950 bg-[#e8e3d8] p-2 md:p-4 shadow-[8px_8px_0_#171717] select-none ${
             isDragging ? "cursor-grabbing" : "cursor-grab"
           }`}
         >
+          {/* FLOATING SEMI-TRANSPARENT MIDDLE LEFT & RIGHT PAGE NAVIGATION BUTTONS */}
+          {numPages && numPages > 1 && (
+            <>
+              <button
+                type="button"
+                disabled={pageNumber <= 1}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  changePage(-1);
+                }}
+                className="absolute left-2 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full bg-black/50 hover:bg-black/80 text-white text-2xl font-black shadow-2xl backdrop-blur-md border border-white/40 disabled:opacity-0 transition active:scale-90 cursor-pointer"
+                title="Previous Page (గత పేజీ)"
+              >
+                ‹
+              </button>
+
+              <button
+                type="button"
+                disabled={pageNumber >= numPages}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  changePage(1);
+                }}
+                className="absolute right-2 top-1/2 -translate-y-1/2 z-30 flex items-center justify-center h-10 w-10 md:h-12 md:w-12 rounded-full bg-black/50 hover:bg-black/80 text-white text-2xl font-black shadow-2xl backdrop-blur-md border border-white/40 disabled:opacity-0 transition active:scale-90 cursor-pointer"
+                title="Next Page (తరువాతి పేజీ)"
+              >
+                ›
+              </button>
+            </>
+          )}
           <Document
             key={`pdf_doc_${retryKey}`}
             file={url}

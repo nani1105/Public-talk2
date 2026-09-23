@@ -33,8 +33,8 @@ export default function HomepageClientWrapper({
         <div className="grid gap-8 lg:grid-cols-[1.6fr_0.9fr] items-start">
           {/* Main Column */}
           <div className="space-y-8">
-            {/* Top Story / Hero */}
-            <NewsHero article={topStory} />
+            {/* Top Story / Hero Carousel */}
+            <NewsHero article={topStory} articles={articles} />
 
             {/* Latest News Grid */}
             <LatestNewsGrid

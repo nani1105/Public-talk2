@@ -1,4 +1,6 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
+import MobileBottomNav from "@/app/components/MobileBottomNav";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -22,8 +24,11 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="scroll-smooth">
-      <body className="antialiased selection:bg-red-800 selection:text-white">
+      <body className="antialiased selection:bg-red-800 selection:text-white pb-14 md:pb-0">
         {children}
+        <Suspense fallback={null}>
+          <MobileBottomNav />
+        </Suspense>
       </body>
     </html>
   );
