@@ -20,12 +20,41 @@ const formatDate = (date: string) => {
   }
 };
 
+const isCategoryMatch = (articleCategory: string, selectedCategory?: string | null): boolean => {
+  if (!selectedCategory || selectedCategory === "తాజా వార్తలు") return true;
+  const aCat = articleCategory.trim().toLowerCase();
+  const sCat = selectedCategory.trim().toLowerCase();
+
+  if (aCat === sCat) return true;
+
+  const aliases: Record<string, string[]> = {
+    "జాతీయం": ["politics", "national", "జాతీయం"],
+    "politics": ["politics", "national", "జాతీయం"],
+    "అంతర్జాతీయం": ["world", "international", "అంతర్జాతీయం"],
+    "world": ["world", "international", "అంతర్జాతీయం"],
+    "ఆంధ్రప్రదేశ్": ["local", "ap", "andhra", "andhra pradesh", "ఆంధ్రప్రదేశ్"],
+    "తెలంగాణ": ["local", "tg", "telangana", "తెలంగాణ"],
+    "local": ["local", "ap", "tg", "andhra pradesh", "telangana", "ఆంధ్రప్రదేశ్", "తెలంగాణ"],
+    "బిజినెస్": ["business", "బిజినెస్"],
+    "business": ["business", "బిజినెస్"],
+    "క్రీడలు": ["sports", "క్రీడలు"],
+    "sports": ["sports", "క్రీడలు"],
+    "సినిమా": ["cinema", "movies", "entertainment", "సినిమా"],
+    "ఫీచర్ పేజీలు": ["features", "ఫీచర్ పేజీలు"],
+    "వసుంధర": ["vasundhara", "women", "వసుంధర"],
+    "తాజా వార్తలు": ["latest", "తాజా వార్తలు"]
+  };
+
+  const selectedAliases = aliases[sCat] || [sCat];
+  return selectedAliases.includes(aCat);
+};
+
 export default function LatestNewsGrid({
   articles,
   selectedCategory,
 }: LatestNewsGridProps) {
   const filtered = selectedCategory
-    ? articles.filter((a) => a.category.toLowerCase() === selectedCategory.toLowerCase())
+    ? articles.filter((a) => isCategoryMatch(a.category, selectedCategory))
     : articles;
 
   return (

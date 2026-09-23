@@ -474,7 +474,7 @@ export default function AdminPage() {
             </label>
 
             <label className="block text-xs font-black uppercase tracking-wider space-y-1">
-              <span>Section Category</span>
+              <span>Section Category / వార్తా విభాగం</span>
               <select
                 value={form.category}
                 onChange={(e) =>
@@ -484,13 +484,27 @@ export default function AdminPage() {
                   })
                 }
                 required
-                className="w-full border-2 border-neutral-950 bg-white px-3 py-2.5 outline-none font-bold focus:ring-2 focus:ring-red-800"
+                className="w-full border-2 border-neutral-950 bg-white px-3 py-2.5 outline-none font-bold text-sm focus:ring-2 focus:ring-red-800"
               >
-                {NEWS_CATEGORIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
+                <optgroup label="తెలుగు విభాగాలు (Telugu Categories)">
+                  <option value="తాజా వార్తలు">తాజా వార్తలు (Latest)</option>
+                  <option value="ఆంధ్రప్రదేశ్">ఆంధ్రప్రదేశ్ (Andhra Pradesh)</option>
+                  <option value="తెలంగాణ">తెలంగాణ (Telangana)</option>
+                  <option value="జాతీయం">జాతీయం (National / Politics)</option>
+                  <option value="అంతర్జాతీయం">అంతర్జాతీయం (International / World)</option>
+                  <option value="బిజినెస్">బిజినెస్ (Business)</option>
+                  <option value="క్రీడలు">క్రీడలు (Sports)</option>
+                  <option value="సినిమా">సినిమా (Cinema)</option>
+                  <option value="ఫీచర్ పేజీలు">ఫీచర్ పేజీలు (Feature Pages)</option>
+                  <option value="వసుంధర">వసుంధర (Vasundhara)</option>
+                </optgroup>
+                <optgroup label="English Categories">
+                  <option value="Politics">Politics</option>
+                  <option value="Local">Local</option>
+                  <option value="Sports">Sports</option>
+                  <option value="World">World</option>
+                  <option value="Business">Business</option>
+                </optgroup>
               </select>
             </label>
 

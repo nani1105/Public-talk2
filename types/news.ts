@@ -1,11 +1,27 @@
-export const NEWS_CATEGORIES = ["Politics", "Local", "Sports", "World", "Business"] as const;
+export const NEWS_CATEGORIES = [
+  "తాజా వార్తలు",
+  "ఆంధ్రప్రదేశ్",
+  "తెలంగాణ",
+  "జాతీయం",
+  "అంతర్జాతీయం",
+  "బిజినెస్",
+  "క్రీడలు",
+  "సినిమా",
+  "ఫీచర్ పేజీలు",
+  "వసుంధర",
+  "Politics",
+  "Local",
+  "Sports",
+  "World",
+  "Business",
+] as const;
 
-export type NewsCategory = (typeof NEWS_CATEGORIES)[number];
+export type NewsCategory = string;
 
 export type NewsArticle = {
   id: string;
   title: string;
-  category: NewsCategory;
+  category: string;
   body: string;
   snippet: string;
   image_url: string;

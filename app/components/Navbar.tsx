@@ -11,48 +11,58 @@ export default function Navbar({ activeCategory }: NavbarProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const navItems = [
-    { label: "BREAKING COVERAGE", category: "World", href: "/?category=World" },
-    { label: "LOCAL VOICES", category: "Local", href: "/?category=Local" },
-    { label: "PUBLIC RECORDS", category: "Politics", href: "/?category=Politics" },
-    { label: "LATEST NEWS", category: null, href: "/" },
-    { label: "DAILY E-PAPER", category: null, href: "/epaper", badge: "PDF", isEpaper: true },
+    { label: "తాజా వార్తలు", category: "తాజా వార్తలు", href: "/?category=తాజా వార్తలు" },
+    { label: "ఆంధ్రప్రదేశ్", category: "ఆంధ్రప్రదేశ్", href: "/?category=ఆంధ్రప్రదేశ్" },
+    { label: "తెలంగాణ", category: "తెలంగాణ", href: "/?category=తెలంగాణ" },
+    { label: "జాతీయం", category: "జాతీయం", href: "/?category=జాతీయం" },
+    { label: "అంతర్జాతీయం", category: "అంతర్జాతీయం", href: "/?category=అంతర్జాతీయం" },
+    { label: "బిజినెస్", category: "బిజినెస్", href: "/?category=బిజినెస్" },
+    { label: "క్రీడలు", category: "క్రీడలు", href: "/?category=క్రీడలు" },
+    { label: "సినిమా", category: "సినిమా", href: "/?category=సినిమా" },
+    { label: "ఫీచర్ పేజీలు", category: "ఫీచర్ పేజీలు", href: "/?category=ఫీచర్ పేజీలు" },
+    { label: "వసుంధర", category: "వసుంధర", href: "/?category=వసుంధర" },
+    { label: "ఈ-పేపర్", category: null, href: "/epaper", isEpaper: true },
   ];
 
   return (
-    <nav className="sticky top-0 z-40 border-b-2 border-neutral-950 bg-[#fbfaf6]">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-2.5 md:px-8">
-        {/* Desktop Links */}
-        <div className="hidden md:flex flex-wrap items-center gap-1 lg:gap-3 text-xs font-black uppercase tracking-[0.18em]">
+    <nav className="sticky top-0 z-40 bg-[#004080] border-b-2 border-neutral-950 text-white shadow-md">
+      <div className="mx-auto flex max-w-7xl items-center justify-between px-2 md:px-4">
+        {/* Desktop Telugu Navbar */}
+        <div className="hidden lg:flex items-stretch overflow-x-auto text-sm font-black tracking-wide">
+          {/* Home Icon Button */}
+          <Link
+            href="/"
+            className={`flex items-center justify-center px-3.5 py-3 border-r border-[#002a50] transition hover:bg-[#002b55] ${
+              !activeCategory ? "bg-[#002548] text-[#ffcc00]" : "text-white"
+            }`}
+            title="Home / హోమ్"
+          >
+            <span className="text-base">🏠</span>
+          </Link>
+
           {navItems.map((item) => {
             if (item.isEpaper) {
               return (
                 <Link
                   key={item.label}
                   href={item.href}
-                  className="flex items-center gap-1 bg-red-800 px-3.5 py-2 text-white transition hover:bg-neutral-950 shadow-[2px_2px_0_#171717]"
+                  className="flex items-center gap-1.5 bg-red-700 px-4 py-3 font-black text-white hover:bg-red-800 transition border-r border-[#002a50]"
                 >
-                  <span>{item.label}</span>
-                  {item.badge && (
-                    <span className="bg-white px-1.5 py-0.5 text-[9px] font-black text-red-800">
-                      {item.badge}
-                    </span>
-                  )}
+                  <span>📄 {item.label}</span>
                 </Link>
               );
             }
 
-            const isSelected = item.category
-              ? activeCategory?.toLowerCase() === item.category.toLowerCase()
-              : !activeCategory;
+            const isSelected = activeCategory?.toLowerCase() === item.category?.toLowerCase();
 
             return (
               <Link
                 key={item.label}
                 href={item.href}
-                className={`px-3 py-1.5 transition border-2 ${
+                className={`flex items-center px-3.5 py-3 transition border-r border-[#002a50] whitespace-nowrap ${
                   isSelected
-                    ? "border-neutral-950 bg-neutral-950 text-white"
-                    : "border-transparent text-neutral-900 hover:border-neutral-950 hover:bg-neutral-100"
+                    ? "bg-[#00284d] text-[#ffcc00] font-black underline underline-offset-4 decoration-2"
+                    : "text-white hover:bg-[#003163] hover:text-[#ffea80]"
                 }`}
               >
                 {item.label}
@@ -61,43 +71,72 @@ export default function Navbar({ activeCategory }: NavbarProps) {
           })}
         </div>
 
-        {/* Mobile Title & Menu Button */}
-        <div className="flex md:hidden items-center justify-between w-full">
-          <Link href="/epaper" className="bg-red-800 px-3 py-1 text-xs font-black uppercase tracking-widest text-white">
-            Today's E-Paper →
-          </Link>
-          <button
-            type="button"
-            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-            className="border-2 border-neutral-950 bg-white px-3 py-1 text-xs font-black uppercase tracking-wider text-neutral-950 shadow-[2px_2px_0_#171717]"
+        {/* Medium Screen Responsive Bar */}
+        <div className="hidden md:flex lg:hidden flex-wrap items-center gap-1 py-2 text-xs font-black">
+          <Link
+            href="/"
+            className={`px-2.5 py-1.5 rounded transition ${!activeCategory ? "bg-amber-400 text-neutral-950 font-black" : "text-white hover:bg-blue-900"}`}
           >
-            {mobileMenuOpen ? "Close ✕" : "Menu ☰"}
-          </button>
+            🏠
+          </Link>
+          {navItems.map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={`px-2 py-1.5 transition ${
+                item.isEpaper
+                  ? "bg-red-700 text-white font-bold"
+                  : activeCategory?.toLowerCase() === item.category?.toLowerCase()
+                  ? "bg-amber-400 text-neutral-950 font-black"
+                  : "text-white hover:bg-blue-900"
+              }`}
+            >
+              {item.label}
+            </Link>
+          ))}
+        </div>
+
+        {/* Mobile Header Control */}
+        <div className="flex md:hidden items-center justify-between w-full py-2 px-2">
+          <Link href="/" className="text-white font-black text-sm flex items-center gap-1">
+            <span>🏠 హోమ్</span>
+          </Link>
+
+          <div className="flex items-center gap-2">
+            <Link href="/epaper" className="bg-red-700 px-3 py-1 text-xs font-black text-white rounded">
+              ఈ-పేపర్ 📄
+            </Link>
+            <button
+              type="button"
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="border border-white bg-blue-900 px-3 py-1 text-xs font-black text-white"
+            >
+              {mobileMenuOpen ? "ముయ్యి ✕" : "మెనూ ☰"}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* Mobile Drawer */}
+      {/* Mobile Menu Drawer */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t-2 border-neutral-950 bg-[#f7f4ed] px-4 py-4 space-y-2">
+        <div className="md:hidden border-t border-[#002a50] bg-[#002f5e] px-4 py-3 grid grid-cols-2 gap-2 text-xs font-black">
           {navItems.map((item) => {
-            const isSelected = item.category
-              ? activeCategory?.toLowerCase() === item.category.toLowerCase()
-              : !activeCategory;
+            const isSelected = activeCategory?.toLowerCase() === item.category?.toLowerCase();
 
             return (
               <Link
                 key={item.label}
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`block w-full p-2.5 text-xs font-black uppercase tracking-wider border-2 ${
+                className={`block p-2.5 rounded border text-center transition ${
                   item.isEpaper
-                    ? "bg-red-800 text-center text-white border-neutral-950 shadow-[2px_2px_0_#171717]"
+                    ? "bg-red-700 text-white col-span-2 font-bold"
                     : isSelected
-                    ? "border-neutral-950 bg-neutral-950 text-white"
-                    : "border-neutral-300 bg-white text-neutral-900"
+                    ? "bg-amber-400 text-neutral-950 border-amber-400 font-black"
+                    : "border-blue-700 bg-[#003870] text-white hover:bg-blue-800"
                 }`}
               >
-                {item.label} {item.badge ? `(${item.badge})` : ""}
+                {item.label}
               </Link>
             );
           })}

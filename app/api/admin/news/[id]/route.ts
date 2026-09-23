@@ -44,7 +44,7 @@ export async function PUT(request: Request, context: RouteContext) {
     const body = String(formData.get("body") ?? "").trim();
     const image = getCoverImage(formData);
 
-    if (!title || !body || !NEWS_CATEGORIES.includes(category)) {
+    if (!title || !body || !(NEWS_CATEGORIES as readonly string[]).includes(category)) {
       return NextResponse.json({ error: "Title, category, and body are required." }, { status: 400 });
     }
 
