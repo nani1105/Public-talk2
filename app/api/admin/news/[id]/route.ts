@@ -228,35 +228,43 @@ export async function DELETE(_request: Request, context: RouteContext) {
       try {
         const supabase = createServiceClient();
 
-        // 1. If id is a valid UUID, delete directly by ID
+        // 1. If id is a valid UUID, attempt delete directly by ID
         if (isUuid(id)) {
           const { error, count } = await supabase.from("news").delete().eq("id", id);
           if (error) {
             supabaseError = error.message;
             console.error("[DELETE news] Supabase delete by ID error:", error);
-          } else {
+          } else if (typeof count === "number" && count > 0) {
             deletedInSupabase = true;
             console.log("[DELETE news] Deleted by UUID id:", id, "count:", count);
           }
         }
 
-        // 2. If not deleted by UUID (or id is non-UUID string), match by title or search DB
+        // 2. If not deleted by UUID (or id is non-UUID string), fetch DB articles to match by ID or Title
         if (!deletedInSupabase) {
-          const localArticles = await getLocalArticles();
-          const targetLocal = localArticles.find((a) => a.id === id);
-          const searchTitle = targetLocal?.title || id;
+          const { data: dbArticles, error: fetchError } = await supabase.from("news").select("id, title");
+          if (fetchError) {
+            supabaseError = fetchError.message;
+          } else if (dbArticles && dbArticles.length > 0) {
+            const localArticles = await getLocalArticles();
+            const targetLocal = localArticles.find((a) => a.id === id);
+            const searchTitle = targetLocal?.title || id;
 
-          const { error: titleDeleteError } = await supabase
-            .from("news")
-            .delete()
-            .eq("title", searchTitle);
+            const matches = dbArticles.filter(
+              (a) =>
+                a.id === id ||
+                a.title.trim().toLowerCase() === searchTitle.trim().toLowerCase()
+            );
 
-          if (titleDeleteError) {
-            supabaseError = titleDeleteError.message;
-            console.error("[DELETE news] Delete by title error:", titleDeleteError);
-          } else {
-            deletedInSupabase = true;
-            console.log("[DELETE news] Deleted by title:", searchTitle);
+            for (const match of matches) {
+              const { error: delErr } = await supabase.from("news").delete().eq("id", match.id);
+              if (delErr) {
+                supabaseError = delErr.message;
+              } else {
+                deletedInSupabase = true;
+                console.log("[DELETE news] Deleted matched DB article:", match.id, match.title);
+              }
+            }
           }
         }
       } catch (err) {

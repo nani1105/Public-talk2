@@ -101,7 +101,9 @@ export const getLocalArticles = async (): Promise<NewsArticle[]> => {
     const filePath = path.join(process.cwd(), "public", "articles.json");
     if (fs.existsSync(filePath)) {
       const content = await fs.promises.readFile(filePath, "utf-8");
-      return JSON.parse(content);
+      if (content && content.trim()) {
+        return JSON.parse(content);
+      }
     }
   } catch (err) {
     console.error("[getLocalArticles] error:", err);
@@ -189,7 +191,6 @@ export const getLatestNews = async (): Promise<NewsArticle[]> => {
 
   console.log("[getLatestNews] isRealSupabase:", isRealSupabase, "url:", url?.slice(0, 30));
 
-  let dbArticles: NewsArticle[] = [];
   if (isRealSupabase) {
     try {
       const supabase = createServiceClient();
@@ -202,7 +203,7 @@ export const getLatestNews = async (): Promise<NewsArticle[]> => {
         console.error("[getLatestNews] Supabase error:", error.message, "code:", error.code, "details:", error.details);
       } else if (data && data.length > 0) {
         console.log("[getLatestNews] Loaded", data.length, "articles from Supabase");
-        dbArticles = data;
+        return data;
       } else {
         console.log("[getLatestNews] Supabase returned 0 articles. Attempting auto-sync of local articles...");
         await syncLocalArticlesToSupabase();
@@ -210,23 +211,19 @@ export const getLatestNews = async (): Promise<NewsArticle[]> => {
           .from("news")
           .select("*")
           .order("published_at", { ascending: false });
-        if (recheckData) dbArticles = recheckData;
+        if (recheckData && recheckData.length > 0) {
+          return recheckData;
+        }
       }
     } catch (err) {
       console.error("[getLatestNews] exception:", err);
     }
   }
 
+  // Local fallback (only used when Supabase is disabled or not configured)
   const localArticles = await getLocalArticles();
-  
-  // Deduplicate articles by title so local articles matching DB don't show up twice
-  const dbTitles = new Set(dbArticles.map((a) => a.title.trim().toLowerCase()));
-  const uniqueLocalArticles = localArticles.filter((a) => !dbTitles.has(a.title.trim().toLowerCase()));
-
-  const allArticles = [...dbArticles, ...uniqueLocalArticles];
-
-  if (allArticles.length > 0) {
-    return allArticles.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime());
+  if (localArticles.length > 0) {
+    return localArticles.sort((a, b) => new Date(b.published_at).getTime() - new Date(a.published_at).getTime());
   }
 
   // Fallback to rich dummy articles if no published articles exist
