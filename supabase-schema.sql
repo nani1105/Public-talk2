@@ -22,9 +22,31 @@ for select
 to anon, authenticated
 using (true);
 
+drop policy if exists "Public can insert news" on public.news;
+create policy "Public can insert news"
+on public.news
+for insert
+to anon, authenticated
+with check (true);
+
+drop policy if exists "Public can update news" on public.news;
+create policy "Public can update news"
+on public.news
+for update
+to anon, authenticated
+using (true);
+
+drop policy if exists "Public can delete news" on public.news;
+create policy "Public can delete news"
+on public.news
+for delete
+to anon, authenticated
+using (true);
+
 -- Create these public buckets in Supabase Storage:
 -- 1. news-images
 -- 2. epapers
 --
--- The app writes with the service-role key from server routes.
+-- The app writes with the service-role key (or anon key with policies) from server routes.
 -- Public read access is expected so the homepage can embed images and the PDF.
+

@@ -31,7 +31,8 @@ const getCoverImage = (formData: FormData) => {
 
 export async function PUT(request: Request, context: RouteContext) {
   try {
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = decodeURIComponent(rawId ?? "").trim();
 
     if (!id) {
       return NextResponse.json({ error: "Article id is required." }, { status: 400 });
@@ -210,7 +211,8 @@ export async function PUT(request: Request, context: RouteContext) {
 
 export async function DELETE(_request: Request, context: RouteContext) {
   try {
-    const { id } = await context.params;
+    const { id: rawId } = await context.params;
+    const id = decodeURIComponent(rawId ?? "").trim();
 
     if (!id) {
       return NextResponse.json({ error: "Article id is required." }, { status: 400 });
@@ -219,33 +221,65 @@ export async function DELETE(_request: Request, context: RouteContext) {
     const url = env.supabaseUrl();
     const isRealSupabase = Boolean(url && !url.includes("example.supabase.co") && !url.includes("dummy"));
 
-    // Find local article if present to match by title if ID is non-UUID
-    const localArticles = await getLocalArticles();
-    const targetLocal = localArticles.find((a) => a.id === id);
+    let deletedInSupabase = false;
+    let supabaseError: string | null = null;
 
     if (isRealSupabase) {
       try {
         const supabase = createServiceClient();
+
+        // 1. If id is a valid UUID, delete directly by ID
         if (isUuid(id)) {
-          const { error } = await supabase.from("news").delete().eq("id", id);
-          if (error) console.error("[DELETE news] Supabase delete error:", error);
+          const { error, count } = await supabase.from("news").delete().eq("id", id);
+          if (error) {
+            supabaseError = error.message;
+            console.error("[DELETE news] Supabase delete by ID error:", error);
+          } else {
+            deletedInSupabase = true;
+            console.log("[DELETE news] Deleted by UUID id:", id, "count:", count);
+          }
         }
 
-        if (targetLocal?.title) {
-          const { error } = await supabase.from("news").delete().eq("title", targetLocal.title);
-          if (error) console.error("[DELETE news] Supabase delete by title error:", error);
+        // 2. If not deleted by UUID (or id is non-UUID string), match by title or search DB
+        if (!deletedInSupabase) {
+          const localArticles = await getLocalArticles();
+          const targetLocal = localArticles.find((a) => a.id === id);
+          const searchTitle = targetLocal?.title || id;
+
+          const { error: titleDeleteError } = await supabase
+            .from("news")
+            .delete()
+            .eq("title", searchTitle);
+
+          if (titleDeleteError) {
+            supabaseError = titleDeleteError.message;
+            console.error("[DELETE news] Delete by title error:", titleDeleteError);
+          } else {
+            deletedInSupabase = true;
+            console.log("[DELETE news] Deleted by title:", searchTitle);
+          }
         }
       } catch (err) {
-        console.warn("[DELETE news] Supabase delete exception:", err);
+        supabaseError = err instanceof Error ? err.message : String(err);
+        console.error("[DELETE news] Supabase delete exception:", err);
       }
     }
 
-    // Local fallback delete
-    const filtered = localArticles.filter((a) => a.id !== id && a.title !== targetLocal?.title);
+    // Local fallback delete (removes from public/articles.json if writable)
+    const localArticles = await getLocalArticles();
+    const filtered = localArticles.filter((a) => a.id !== id);
     if (filtered.length !== localArticles.length) {
       await saveLocalArticles(filtered);
     }
 
+    if (isRealSupabase && supabaseError && !deletedInSupabase) {
+      return NextResponse.json(
+        { error: `Database delete failed: ${supabaseError}` },
+        { status: 500 }
+      );
+    }
+
+    // Revalidate Next.js static / server caches so Vercel pages refresh immediately
     try {
       revalidatePath("/", "layout");
       revalidatePath("/admin");
@@ -254,9 +288,9 @@ export async function DELETE(_request: Request, context: RouteContext) {
       console.warn("[DELETE news] revalidatePath error:", e);
     }
 
-    return NextResponse.json({ ok: true });
+    return NextResponse.json({ ok: true, message: "Article deleted successfully." });
   } catch (error) {
-    console.error("[DELETE news] error:", error);
+    console.error("[DELETE news] Unhandled error:", error);
     return NextResponse.json({ error: "Unable to delete article." }, { status: 500 });
   }
 }

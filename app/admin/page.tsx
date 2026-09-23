@@ -140,15 +140,20 @@ export default function AdminPage() {
   async function handleDeleteArticle(id: string) {
     if (!confirm("Delete this article permanently?")) return;
 
-    const res = await fetch(`/api/admin/news/${id}`, { method: "DELETE" });
-    const data = await res.json();
-    if (!res.ok) {
-      setNewsMsg({ type: "err", text: data.error ?? "Delete failed" });
-      return;
+    setNewsMsg(null);
+    try {
+      const res = await fetch(`/api/admin/news/${encodeURIComponent(id)}`, { method: "DELETE" });
+      const data = await res.json();
+      if (!res.ok) {
+        setNewsMsg({ type: "err", text: data.error ?? "Delete failed" });
+        return;
+      }
+      setNewsMsg({ type: "ok", text: data.message ?? "Article deleted successfully" });
+      if (editingId === id) resetForm();
+      await loadData();
+    } catch {
+      setNewsMsg({ type: "err", text: "Network error while deleting article" });
     }
-    setNewsMsg({ type: "ok", text: "Article deleted" });
-    if (editingId === id) resetForm();
-    await loadData();
   }
 
   async function handleEpaper(e: FormEvent<HTMLFormElement>) {
