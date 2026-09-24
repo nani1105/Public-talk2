@@ -1,6 +1,19 @@
 "use client";
 
 import Link from "next/link";
+import dynamic from "next/dynamic";
+
+const EpaperPreviewCanvas = dynamic(() => import("./EpaperPreviewCanvas"), {
+  ssr: false,
+  loading: () => (
+    <div className="flex flex-col items-center justify-center py-16 space-y-3">
+      <div className="h-8 w-8 animate-spin border-4 border-neutral-950 border-t-red-800 rounded-full" />
+      <span className="text-xs font-bold uppercase tracking-wider text-neutral-600">
+        Loading E-Paper Preview...
+      </span>
+    </div>
+  ),
+});
 
 type EpaperPreviewCardProps = {
   epaperUrl: string;
@@ -38,38 +51,10 @@ export default function EpaperPreviewCard({ epaperUrl }: EpaperPreviewCardProps)
         </Link>
       </div>
 
-      {/* Static Visual Preview Panel — no PDF rendering on homepage for speed */}
-      <Link href="/epaper" className="group block">
-        <div className="relative flex items-center justify-center bg-[#f7f4ed] border-2 border-neutral-950 overflow-hidden h-48 shadow-[4px_4px_0_#171717]">
-          {/* Decorative newspaper-style lines */}
-          <div className="absolute inset-0 flex flex-col p-4 gap-2 pointer-events-none opacity-20">
-            <div className="h-5 w-3/4 bg-neutral-900 rounded-sm" />
-            <div className="h-2 w-full bg-neutral-700 rounded-sm" />
-            <div className="h-2 w-5/6 bg-neutral-700 rounded-sm" />
-            <div className="h-2 w-full bg-neutral-700 rounded-sm" />
-            <div className="grid grid-cols-2 gap-2 mt-1">
-              <div className="space-y-1">
-                <div className="h-12 w-full bg-neutral-500 rounded-sm" />
-                <div className="h-2 w-full bg-neutral-700 rounded-sm" />
-                <div className="h-2 w-4/5 bg-neutral-700 rounded-sm" />
-              </div>
-              <div className="space-y-1">
-                <div className="h-12 w-full bg-neutral-500 rounded-sm" />
-                <div className="h-2 w-full bg-neutral-700 rounded-sm" />
-                <div className="h-2 w-3/4 bg-neutral-700 rounded-sm" />
-              </div>
-            </div>
-          </div>
-          {/* CTA Overlay */}
-          <div className="relative z-10 text-center space-y-2 px-4">
-            <div className="text-4xl">📰</div>
-            <p className="font-serif text-lg font-black text-neutral-900 leading-tight">
-              Open Today's Edition
-            </p>
-            <span className="inline-block border-2 border-neutral-950 bg-neutral-950 px-4 py-1.5 text-xs font-black uppercase tracking-wider text-white group-hover:bg-red-800 transition">
-              Open E-Paper Reader →
-            </span>
-          </div>
+      {/* EPAPER FIRST PAGE PREVIEW RECTANGLE */}
+      <Link href="/epaper" className="group block" title="Click to view full e-paper reader">
+        <div className="relative flex items-center justify-center bg-[#f7f4ed] border-2 border-neutral-950 overflow-hidden min-h-[260px] max-h-[440px] shadow-[4px_4px_0_#171717] transition-all group-hover:border-red-800">
+          <EpaperPreviewCanvas epaperUrl={epaperUrl} />
         </div>
       </Link>
 

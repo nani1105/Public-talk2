@@ -57,35 +57,7 @@ export default async function EpaperPage() {
           </div>
 
           {/* Edition Navigation Tabs */}
-          <div className="flex flex-wrap items-center justify-between gap-3 border-t-2 border-neutral-950 pt-4 text-xs font-black uppercase tracking-[0.18em]">
-            <div className="flex flex-wrap items-center gap-2">
-              <Link
-                href="/"
-                className="border-2 border-transparent px-3 py-1.5 text-neutral-700 hover:border-neutral-950 hover:bg-white transition"
-              >
-                HOME
-              </Link>
-              <span className="border-2 border-neutral-950 bg-neutral-950 px-3 py-1.5 text-white">
-                MAIN EDITION
-              </span>
-              <span
-                className="border-2 border-neutral-300 px-3 py-1.5 text-neutral-400 cursor-not-allowed"
-                title="Single edition format current active"
-              >
-                TABLOID
-              </span>
-              <a
-                href="#archive"
-                className="border-2 border-neutral-950 bg-white px-3 py-1.5 text-neutral-950 hover:bg-neutral-100 transition shadow-[2px_2px_0_#171717]"
-              >
-                ARCHIVE
-              </a>
-            </div>
-
-            <div className="text-xs font-mono font-bold text-red-800">
-              ● Official Digital Publication
-            </div>
-          </div>
+          
         </div>
       </header>
 
