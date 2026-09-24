@@ -54,10 +54,7 @@ export default function Header() {
 
           {/* Newspaper Editorial Sidebox */}
           <div className="flex flex-col justify-between border-l-4 border-neutral-950 pl-4 py-1 text-sm font-semibold text-neutral-800 max-w-xs">
-            <p className="leading-snug">
-              Uncompromised local journalism, public record auditing, and daily e-paper distribution.
-            </p>
-            <div className="mt-3 flex items-center gap-2">
+            <div className="space-y-1">
               <Link
                 href="/epaper"
                 className="inline-flex items-center justify-center gap-1 bg-red-800 px-3 py-1 text-xs font-bold uppercase tracking-wider text-white hover:bg-neutral-900 transition shadow-[2px_2px_0_#171717]"

@@ -1,9 +1,14 @@
+-- 1. Enable pgcrypto extension for UUID generation
 create extension if not exists "pgcrypto";
 
+-- 2. Drop old restrictive category check constraint if it exists
+alter table if exists public.news drop constraint if exists news_category_check;
+
+-- 3. Create or update public.news table (supporting all Telugu & English categories)
 create table if not exists public.news (
   id uuid primary key default gen_random_uuid(),
   title text not null,
-  category text not null check (category in ('Politics', 'Local', 'Sports', 'World', 'Business')),
+  category text not null,
   body text not null,
   snippet text not null,
   image_url text not null,
@@ -11,10 +16,13 @@ create table if not exists public.news (
   published_at timestamptz not null default now()
 );
 
+-- 4. Index for fast querying & sorting by published date
 create index if not exists news_published_at_idx on public.news (published_at desc);
 
+-- 5. Enable Row Level Security (RLS)
 alter table public.news enable row level security;
 
+-- 6. Row Level Security Policies (Read, Insert, Update, Delete)
 drop policy if exists "Public can read news" on public.news;
 create policy "Public can read news"
 on public.news
@@ -43,10 +51,8 @@ for delete
 to anon, authenticated
 using (true);
 
--- Create these public buckets in Supabase Storage:
--- 1. news-images
--- 2. epapers
---
--- The app writes with the service-role key (or anon key with policies) from server routes.
--- Public read access is expected so the homepage can embed images and the PDF.
-
+-- 7. Supabase Storage Buckets Setup:
+-- Create two public buckets in Supabase Dashboard -> Storage:
+--   a. news-images (for article cover photos)
+--   b. epapers     (for daily e-paper PDF files)
+-- Make sure both buckets have "Public" access checked so images and PDFs render on the site.
